@@ -1,6 +1,9 @@
 {
   "name": "paperclip-plugin-agent-usage",
-  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "0.1.2",
   "description": "Track AI provider usage (Claude, etc.) and expose quota data to agents and the Paperclip dashboard",
   "type": "module",
   "paperclipPlugin": {
@@ -8,10 +11,16 @@
     "worker": "./dist/worker.js",
     "ui": "./dist/ui/"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "node ./scripts/build.mjs",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build",
     "dev": "node ./scripts/build.mjs --watch"
   },
   "dependencies": {
@@ -29,7 +38,13 @@
   "peerDependencies": {
     "react": ">=18"
   },
-  "keywords": ["paperclip", "plugin", "ai-usage", "claude", "anthropic"],
+  "keywords": [
+    "paperclip",
+    "plugin",
+    "ai-usage",
+    "claude",
+    "anthropic"
+  ],
   "license": "MIT",
   "author": "Paperclip Company",
   "repository": {
