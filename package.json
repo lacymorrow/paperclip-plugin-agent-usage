@@ -15,7 +15,7 @@
     "dev": "node ./scripts/build.mjs --watch"
   },
   "dependencies": {
-    "@paperclipai/plugin-sdk": "latest"
+    "@paperclipai/plugin-sdk": "^2026.428.0"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
