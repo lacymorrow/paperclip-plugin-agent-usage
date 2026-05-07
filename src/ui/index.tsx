@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   usePluginAction,
   usePluginData,
@@ -34,78 +34,40 @@ interface UsageHistoryEntry {
 }
 
 // ---------------------------------------------------------------------------
-// Shared styles
+// Design tokens — all resolve from Paperclip's host CSS variables
 // ---------------------------------------------------------------------------
 
-const styles = {
-  container: {
-    padding: "12px",
-    fontFamily: "system-ui, -apple-system, sans-serif",
-    fontSize: "13px",
-  } satisfies CSSProperties,
-  heading: {
-    fontSize: "14px",
-    fontWeight: 600,
-    marginBottom: "8px",
-  } satisfies CSSProperties,
-  barContainer: {
-    marginBottom: "10px",
-  } satisfies CSSProperties,
-  barLabel: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: "3px",
-    fontSize: "12px",
-  } satisfies CSSProperties,
-  barTrack: {
-    height: "8px",
-    borderRadius: "4px",
-    background: "var(--color-surface-2, #e5e7eb)",
-    overflow: "hidden",
-  } satisfies CSSProperties,
-  barFill: (percent: number): CSSProperties => ({
-    height: "100%",
-    borderRadius: "4px",
-    width: `${percent}%`,
-    background:
-      percent > 85
-        ? "var(--color-danger, #ef4444)"
-        : percent > 60
-          ? "var(--color-warning, #f59e0b)"
-          : "var(--color-success, #22c55e)",
-    transition: "width 0.3s ease",
-  }),
-  meta: {
-    fontSize: "11px",
-    color: "var(--color-text-secondary, #6b7280)",
-    marginTop: "2px",
-  } satisfies CSSProperties,
-  error: {
-    color: "var(--color-danger, #ef4444)",
-    fontSize: "12px",
-    padding: "8px",
-    background: "var(--color-surface-2, #fef2f2)",
-    borderRadius: "6px",
-  } satisfies CSSProperties,
-  button: {
-    padding: "6px 12px",
-    fontSize: "12px",
-    borderRadius: "4px",
-    border: "1px solid var(--color-border, #d1d5db)",
-    background: "var(--color-surface-1, #fff)",
-    cursor: "pointer",
-    marginTop: "8px",
-  } satisfies CSSProperties,
-  empty: {
-    color: "var(--color-text-secondary, #6b7280)",
-    fontStyle: "italic" as const,
-    padding: "12px",
-  } satisfies CSSProperties,
+const t = {
+  bg: "var(--background)",
+  fg: "var(--foreground)",
+  card: "var(--card)",
+  cardFg: "var(--card-foreground)",
+  muted: "var(--muted)",
+  mutedFg: "var(--muted-foreground)",
+  border: "var(--border)",
+  primary: "var(--primary)",
+  primaryFg: "var(--primary-foreground)",
+  secondary: "var(--secondary)",
+  secondaryFg: "var(--secondary-foreground)",
+  destructive: "var(--destructive)",
+  destructiveFg: "var(--destructive-foreground)",
+  // Chart tokens used for the usage bar color ramp
+  ok: "var(--chart-2)",       // teal  < 50%
+  caution: "var(--chart-4)",  // yellow 50–75%
+  warning: "var(--chart-5)",  // orange 75–90%
+  // critical: destructive     //  red  ≥ 90%
 };
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function barColor(percent: number): string {
+  if (percent >= 90) return t.destructive;
+  if (percent >= 75) return t.warning;
+  if (percent >= 50) return t.caution;
+  return t.ok;
+}
 
 function formatTimeUntil(isoDate: string): string {
   const delta = new Date(isoDate).getTime() - Date.now();
@@ -127,30 +89,273 @@ function formatAge(isoDate: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// UsageBar component
+// Shared base styles
+// ---------------------------------------------------------------------------
+
+const base: Record<string, CSSProperties> = {
+  container: {
+    padding: "12px",
+    fontFamily: "inherit",
+    fontSize: "13px",
+    color: t.fg,
+    lineHeight: 1.4,
+  },
+  pagePadding: {
+    padding: "20px",
+    maxWidth: "640px",
+    fontFamily: "inherit",
+    fontSize: "13px",
+    color: t.fg,
+    lineHeight: 1.4,
+  },
+  heading: {
+    fontSize: "14px",
+    fontWeight: 600,
+    color: t.fg,
+    margin: 0,
+    marginBottom: "8px",
+  },
+  pageHeading: {
+    fontSize: "18px",
+    fontWeight: 600,
+    color: t.fg,
+    margin: 0,
+    marginBottom: "16px",
+  },
+  subheading: {
+    fontSize: "13px",
+    fontWeight: 600,
+    color: t.fg,
+    margin: 0,
+    marginBottom: "12px",
+  },
+  meta: {
+    fontSize: "11px",
+    color: t.mutedFg,
+    marginTop: "2px",
+  },
+  metaInline: {
+    fontSize: "11px",
+    color: t.mutedFg,
+    marginLeft: "6px",
+  },
+  divider: {
+    height: "1px",
+    background: t.border,
+    margin: "16px 0",
+    border: "none",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Button variants
+// ---------------------------------------------------------------------------
+
+function btnPrimary(extra?: CSSProperties): CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    padding: "6px 12px",
+    fontSize: "12px",
+    fontWeight: 500,
+    fontFamily: "inherit",
+    borderRadius: "var(--radius, 0)",
+    border: "1px solid transparent",
+    background: t.primary,
+    color: t.primaryFg,
+    cursor: "pointer",
+    lineHeight: 1,
+    ...extra,
+  };
+}
+
+function btnSecondary(extra?: CSSProperties): CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    padding: "6px 12px",
+    fontSize: "12px",
+    fontWeight: 500,
+    fontFamily: "inherit",
+    borderRadius: "var(--radius, 0)",
+    border: `1px solid ${t.border}`,
+    background: t.secondary,
+    color: t.secondaryFg,
+    cursor: "pointer",
+    lineHeight: 1,
+    ...extra,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Error card
+// ---------------------------------------------------------------------------
+
+function ErrorCard({
+  message,
+  onRetry,
+  retrying,
+}: {
+  message: string;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <div
+      role="alert"
+      style={{
+        padding: "10px 12px",
+        borderRadius: "var(--radius, 0)",
+        border: `1px solid ${t.destructive}`,
+        background: t.card,
+        marginBottom: "8px",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "12px",
+          color: t.destructive,
+          fontWeight: 500,
+          marginBottom: "8px",
+        }}
+      >
+        {message}
+      </div>
+      <button style={btnSecondary()} onClick={onRetry} disabled={retrying}>
+        {retrying ? "Retrying…" : "Retry"}
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
+
+function SkeletonRect({ w, h }: { w: string | number; h: number }) {
+  return (
+    <div
+      style={{
+        width: w,
+        height: h,
+        borderRadius: "3px",
+        background: t.muted,
+        opacity: 0.8,
+      }}
+    />
+  );
+}
+
+function SkeletonBar() {
+  return (
+    <div style={{ marginBottom: "10px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: "4px",
+        }}
+      >
+        <SkeletonRect w={90} h={11} />
+        <SkeletonRect w={48} h={11} />
+      </div>
+      <SkeletonRect w="100%" h={8} />
+    </div>
+  );
+}
+
+function LoadingSkeleton({ bars = 2 }: { bars?: number }) {
+  return (
+    <div aria-busy="true" aria-label="Loading usage data">
+      {Array.from({ length: bars }).map((_, i) => (
+        <SkeletonBar key={i} />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// UsageBar component — ARIA progressbar
 // ---------------------------------------------------------------------------
 
 function UsageBar({ window: w }: { window: QuotaWindow }) {
   const percent = w.usedPercent;
+  const clampedPct = percent != null ? Math.min(100, Math.max(0, percent)) : null;
+
   return (
-    <div style={styles.barContainer}>
-      <div style={styles.barLabel}>
-        <span>{w.label}</span>
-        <span>
-          {percent != null ? `${percent}% used` : w.valueLabel ?? "—"}
+    <div style={{ marginBottom: "10px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: "3px",
+          fontSize: "12px",
+        }}
+      >
+        <span style={{ color: t.fg }}>{w.label}</span>
+        <span style={{ color: t.mutedFg }}>
+          {percent != null ? `${percent}%` : w.valueLabel ?? "—"}
         </span>
       </div>
-      {percent != null && (
-        <div style={styles.barTrack}>
-          <div style={styles.barFill(percent)} />
+      {clampedPct != null && (
+        <div
+          role="progressbar"
+          aria-valuenow={clampedPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${w.label}: ${clampedPct}% used`}
+          style={{
+            height: "8px",
+            borderRadius: "4px",
+            background: t.muted,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              borderRadius: "4px",
+              width: `${clampedPct}%`,
+              background: barColor(clampedPct),
+              transition: "width 0.35s ease",
+            }}
+          />
         </div>
       )}
-      <div style={styles.meta}>
-        {w.resetsAt && formatTimeUntil(w.resetsAt)}
-        {w.detail && (w.resetsAt ? ` · ${w.detail}` : w.detail)}
-      </div>
+      {(w.resetsAt || w.detail) && (
+        <div style={base.meta}>
+          {w.resetsAt && formatTimeUntil(w.resetsAt)}
+          {w.detail && (w.resetsAt ? ` · ${w.detail}` : w.detail)}
+        </div>
+      )}
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Refresh hook — shared across widget + page
+// ---------------------------------------------------------------------------
+
+function useRefresh() {
+  const refresh = usePluginAction("refresh");
+  const [refreshing, setRefreshing] = useState(false);
+  const [didRefresh, setDidRefresh] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setDidRefresh(false);
+    try {
+      await refresh({});
+      setDidRefresh(true);
+      setTimeout(() => setDidRefresh(false), 2500);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  return { refreshing, didRefresh, handleRefresh };
 }
 
 // ---------------------------------------------------------------------------
@@ -158,28 +363,39 @@ function UsageBar({ window: w }: { window: QuotaWindow }) {
 // ---------------------------------------------------------------------------
 
 export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
-  const { data: snapshot, loading } = usePluginData<ProviderSnapshot | null>("latest-quota", {});
-  const refresh = usePluginAction("refresh");
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await refresh({});
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  const { data: snapshot, loading } = usePluginData<ProviderSnapshot | null>(
+    "latest-quota",
+    {}
+  );
+  const { refreshing, didRefresh, handleRefresh } = useRefresh();
 
   if (loading) {
-    return <div style={styles.container}>Loading usage data…</div>;
+    return (
+      <div style={base.container}>
+        <LoadingSkeleton bars={2} />
+      </div>
+    );
   }
 
   if (!snapshot) {
     return (
-      <div style={styles.container}>
-        <div style={styles.empty}>No usage data yet. Waiting for first poll…</div>
-        <button style={styles.button} onClick={handleRefresh} disabled={refreshing}>
+      <div style={base.container}>
+        <div
+          style={{
+            padding: "12px",
+            textAlign: "center",
+            color: t.mutedFg,
+            fontSize: "12px",
+            marginBottom: "8px",
+          }}
+        >
+          No usage data yet. Waiting for first poll.
+        </div>
+        <button
+          style={btnSecondary({ width: "100%" })}
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
           {refreshing ? "Fetching…" : "Fetch Now"}
         </button>
       </div>
@@ -188,26 +404,44 @@ export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
 
   if (!snapshot.ok) {
     return (
-      <div style={styles.container}>
-        <div style={styles.error}>{snapshot.error}</div>
-        <button style={styles.button} onClick={handleRefresh} disabled={refreshing}>
-          Retry
-        </button>
+      <div style={base.container}>
+        <ErrorCard
+          message={snapshot.error ?? "Unknown error"}
+          onRetry={handleRefresh}
+          retrying={refreshing}
+        />
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={{ ...styles.heading, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>Claude Usage</span>
-        <span style={styles.meta}>{formatAge(snapshot.fetchedAt)}</span>
+    <div style={base.container}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "10px",
+        }}
+      >
+        <span style={base.heading}>Claude Usage</span>
+        <span style={{ fontSize: "11px", color: t.mutedFg }}>
+          {didRefresh ? (
+            <span style={{ color: t.ok }}>Updated</span>
+          ) : (
+            formatAge(snapshot.fetchedAt)
+          )}
+        </span>
       </div>
       {snapshot.windows.map((w, i) => (
         <UsageBar key={i} window={w} />
       ))}
-      <button style={styles.button} onClick={handleRefresh} disabled={refreshing}>
-        {refreshing ? "Refreshing…" : "Refresh"}
+      <button
+        style={btnSecondary({ marginTop: "4px" })}
+        onClick={handleRefresh}
+        disabled={refreshing}
+      >
+        {refreshing ? "Refreshing…" : didRefresh ? "Refreshed ✓" : "Refresh"}
       </button>
     </div>
   );
@@ -218,100 +452,204 @@ export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
 // ---------------------------------------------------------------------------
 
 export function AgentUsagePage(_props: PluginPageProps) {
-  const { data: snapshot, loading } = usePluginData<ProviderSnapshot | null>("latest-quota", {});
-  const { data: history } = usePluginData<UsageHistoryEntry[]>("usage-history", {});
-  const refresh = usePluginAction("refresh");
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await refresh({});
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  const { data: snapshot, loading } = usePluginData<ProviderSnapshot | null>(
+    "latest-quota",
+    {}
+  );
+  const { data: history } = usePluginData<UsageHistoryEntry[]>(
+    "usage-history",
+    {}
+  );
+  const { refreshing, didRefresh, handleRefresh } = useRefresh();
 
   return (
-    <div style={{ ...styles.container, maxWidth: "640px" }}>
-      <h2 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "16px" }}>
-        AI Provider Usage
-      </h2>
+    <div style={base.pagePadding}>
+      <h2 style={base.pageHeading}>AI Provider Usage</h2>
 
-      {loading && <div>Loading…</div>}
+      {loading && <LoadingSkeleton bars={3} />}
 
       {!loading && !snapshot && (
-        <div style={styles.empty}>
-          No usage data collected yet. Click "Fetch Now" or wait for the next scheduled poll.
+        <div
+          style={{
+            padding: "24px",
+            textAlign: "center",
+            color: t.mutedFg,
+            fontSize: "13px",
+            border: `1px dashed ${t.border}`,
+            borderRadius: "var(--radius, 0)",
+            marginBottom: "16px",
+          }}
+        >
+          No usage data collected yet.
+          <br />
+          <span style={{ fontSize: "12px" }}>
+            Click "Fetch Now" or wait for the next scheduled poll.
+          </span>
         </div>
       )}
 
-      {snapshot && !snapshot.ok && (
-        <div style={styles.error}>
-          <strong>Error:</strong> {snapshot.error}
-        </div>
+      {!loading && snapshot && !snapshot.ok && (
+        <ErrorCard
+          message={snapshot.error ?? "Unknown error fetching usage data"}
+          onRetry={handleRefresh}
+          retrying={refreshing}
+        />
       )}
 
       {snapshot?.ok && (
-        <div>
-          <div style={{ marginBottom: "16px" }}>
-            <div style={{ ...styles.heading, marginBottom: "12px" }}>
+        <section style={{ marginBottom: "16px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: "6px",
+              marginBottom: "12px",
+            }}
+          >
+            <h3 style={base.subheading}>
               Current Quota — {snapshot.provider}
-              <span style={{ ...styles.meta, marginLeft: "8px" }}>
-                via {snapshot.source} · {formatAge(snapshot.fetchedAt)}
-              </span>
-            </div>
-            {snapshot.windows.map((w, i) => (
-              <UsageBar key={i} window={w} />
-            ))}
+            </h3>
+            <span style={base.metaInline}>
+              via {snapshot.source} ·{" "}
+              {didRefresh ? (
+                <span style={{ color: t.ok }}>just updated</span>
+              ) : (
+                formatAge(snapshot.fetchedAt)
+              )}
+            </span>
           </div>
-        </div>
+          {snapshot.windows.map((w, i) => (
+            <UsageBar key={i} window={w} />
+          ))}
+        </section>
       )}
 
-      <button style={styles.button} onClick={handleRefresh} disabled={refreshing}>
-        {refreshing ? "Refreshing…" : "Refresh Now"}
+      <button
+        style={btnPrimary({ marginTop: loading ? "12px" : "0" })}
+        onClick={handleRefresh}
+        disabled={refreshing}
+      >
+        {refreshing ? "Refreshing…" : didRefresh ? "Refreshed ✓" : "Refresh Now"}
       </button>
 
       {history && history.length > 0 && (
-        <div style={{ marginTop: "24px" }}>
-          <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "8px" }}>
-            Recent History ({history.length} snapshots)
+        <section style={{ marginTop: "28px" }}>
+          <hr style={base.divider} />
+          <h3 style={{ ...base.subheading, marginBottom: "8px" }}>
+            Recent History
+            <span style={{ ...base.metaInline, fontWeight: 400 }}>
+              {history.length} snapshot{history.length !== 1 ? "s" : ""}
+            </span>
           </h3>
-          <table style={{ width: "100%", fontSize: "11px", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", padding: "4px", borderBottom: "1px solid var(--color-border, #e5e7eb)" }}>
-                  Time
-                </th>
-                <th style={{ textAlign: "left", padding: "4px", borderBottom: "1px solid var(--color-border, #e5e7eb)" }}>
-                  Session
-                </th>
-                <th style={{ textAlign: "left", padding: "4px", borderBottom: "1px solid var(--color-border, #e5e7eb)" }}>
-                  Week
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.slice(0, 20).map((entry, i) => {
-                const session = entry.windows.find((w) => w.label.includes("session"));
-                const week = entry.windows.find((w) => w.label.includes("all models"));
-                return (
-                  <tr key={i}>
-                    <td style={{ padding: "4px" }}>{formatAge(entry.fetchedAt)}</td>
-                    <td style={{ padding: "4px" }}>
-                      {session?.usedPercent != null ? `${session.usedPercent}%` : "—"}
-                    </td>
-                    <td style={{ padding: "4px" }}>
-                      {week?.usedPercent != null ? `${week.usedPercent}%` : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+          <HistoryTable history={history} />
+        </section>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// History table — striped rows
+// ---------------------------------------------------------------------------
+
+function HistoryTable({ history }: { history: UsageHistoryEntry[] }) {
+  const thStyle: CSSProperties = {
+    textAlign: "left",
+    padding: "6px 8px",
+    fontSize: "11px",
+    fontWeight: 600,
+    color: t.mutedFg,
+    borderBottom: `1px solid ${t.border}`,
+    background: t.muted,
+    whiteSpace: "nowrap",
+  };
+
+  return (
+    <table
+      style={{
+        width: "100%",
+        fontSize: "12px",
+        borderCollapse: "collapse",
+        borderRadius: "var(--radius, 0)",
+        overflow: "hidden",
+        border: `1px solid ${t.border}`,
+      }}
+    >
+      <thead>
+        <tr>
+          <th style={thStyle}>Time</th>
+          <th style={thStyle}>Session</th>
+          <th style={thStyle}>Week</th>
+        </tr>
+      </thead>
+      <tbody>
+        {history.slice(0, 20).map((entry, i) => {
+          const session = entry.windows.find((w) =>
+            w.label.toLowerCase().includes("session")
+          );
+          const week = entry.windows.find((w) =>
+            w.label.toLowerCase().includes("all models")
+          );
+          const sessionPct = session?.usedPercent;
+          const weekPct = week?.usedPercent;
+
+          const rowStyle: CSSProperties = {
+            background: i % 2 === 0 ? t.card : t.muted,
+          };
+
+          const cellStyle: CSSProperties = {
+            padding: "6px 8px",
+            borderBottom: `1px solid ${t.border}`,
+            color: t.fg,
+          };
+
+          return (
+            <tr key={i} style={rowStyle}>
+              <td style={cellStyle}>{formatAge(entry.fetchedAt)}</td>
+              <td style={cellStyle}>
+                {sessionPct != null ? (
+                  <UsagePill percent={sessionPct} />
+                ) : (
+                  <span style={{ color: t.mutedFg }}>—</span>
+                )}
+              </td>
+              <td style={cellStyle}>
+                {weekPct != null ? (
+                  <UsagePill percent={weekPct} />
+                ) : (
+                  <span style={{ color: t.mutedFg }}>—</span>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function UsagePill({ percent }: { percent: number }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "5px",
+        fontSize: "11px",
+      }}
+    >
+      <span
+        style={{
+          display: "inline-block",
+          width: "6px",
+          height: "6px",
+          borderRadius: "50%",
+          background: barColor(percent),
+          flexShrink: 0,
+        }}
+      />
+      {percent}%
+    </span>
   );
 }
 
@@ -320,24 +658,68 @@ export function AgentUsagePage(_props: PluginPageProps) {
 // ---------------------------------------------------------------------------
 
 export function AgentUsageSettingsPage(_props: PluginSettingsPageProps) {
-  const { data: snapshot } = usePluginData<ProviderSnapshot | null>("latest-quota", {});
+  const { data: snapshot } = usePluginData<ProviderSnapshot | null>(
+    "latest-quota",
+    {}
+  );
+
+  const statusColor = snapshot?.ok
+    ? t.ok
+    : snapshot?.error
+      ? t.destructive
+      : t.mutedFg;
+
+  const statusText = snapshot?.ok
+    ? `Connected — last fetch ${formatAge(snapshot.fetchedAt)}`
+    : snapshot?.error
+      ? snapshot.error
+      : "Not yet polled";
 
   return (
-    <div style={styles.container}>
-      <h3 style={styles.heading}>Agent Usage Settings</h3>
-      <p style={{ fontSize: "12px", color: "var(--color-text-secondary, #6b7280)", marginBottom: "12px" }}>
-        Configure your AI provider credentials and polling interval in the plugin configuration above.
+    <div style={base.container}>
+      <h3 style={base.heading}>Agent Usage Status</h3>
+      <p style={{ fontSize: "12px", color: t.mutedFg, marginBottom: "12px", marginTop: 0 }}>
+        Configure credentials and polling interval via the plugin settings above.
       </p>
-      <div style={{ fontSize: "12px" }}>
-        <strong>Status:</strong>{" "}
-        {snapshot?.ok
-          ? `Connected (last fetch: ${formatAge(snapshot.fetchedAt)})`
-          : snapshot?.error ?? "Not yet polled"}
+
+      <div
+        style={{
+          padding: "10px 12px",
+          background: t.card,
+          border: `1px solid ${t.border}`,
+          borderRadius: "var(--radius, 0)",
+          fontSize: "12px",
+          display: "grid",
+          gap: "6px",
+        }}
+      >
+        <Row label="Status">
+          <span style={{ color: statusColor, fontWeight: 500 }}>{statusText}</span>
+        </Row>
+        <Row label="Provider">
+          <span style={{ color: t.fg }}>{snapshot?.provider ?? "—"}</span>
+        </Row>
+        <Row label="Token source">
+          <span style={{ color: t.fg }}>{snapshot?.source ?? "—"}</span>
+        </Row>
       </div>
-      <div style={{ fontSize: "12px", marginTop: "4px" }}>
-        <strong>Token source:</strong>{" "}
-        {snapshot?.source ?? "unknown"}
-      </div>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", gap: "8px", alignItems: "baseline" }}>
+      <span style={{ color: t.mutedFg, minWidth: "96px", flexShrink: 0 }}>
+        {label}
+      </span>
+      {children}
     </div>
   );
 }
