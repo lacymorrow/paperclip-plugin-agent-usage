@@ -12,7 +12,7 @@ import {
   type ToolResult,
   type ToolRunContext,
 } from "@paperclipai/plugin-sdk";
-import { JOB_KEYS, STATE_KEYS, TOOL_NAMES } from "./constants.js";
+import { DEFAULT_CONFIG, JOB_KEYS, STATE_KEYS, TOOL_NAMES } from "./constants.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -383,6 +383,22 @@ async function resolveToken(ctx: PluginContext): Promise<string | null> {
 }
 
 async function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
+  const config = (await ctx.config.get()) as PluginConfig;
+  const enabledProviders = config.providers ?? DEFAULT_CONFIG.providers;
+
+  if (!enabledProviders.includes("claude")) {
+    const snapshot: ProviderSnapshot = {
+      provider: "claude",
+      source: null,
+      ok: false,
+      error: "Provider 'claude' is not enabled in config",
+      windows: [],
+      fetchedAt: new Date().toISOString(),
+    };
+    await ctx.state.set({ scopeKind: "instance", stateKey: STATE_KEYS.latestQuota }, snapshot);
+    return snapshot;
+  }
+
   let snapshot: ProviderSnapshot;
   try {
     const token = await resolveToken(ctx);
@@ -512,6 +528,22 @@ const plugin: PaperclipPlugin = definePlugin({
     });
 
     ctx.jobs.register(JOB_KEYS.pollUsage, async () => {
+      const jobConfig = (await ctx.config.get()) as PluginConfig;
+      const intervalMinutes = jobConfig.pollIntervalMinutes ?? DEFAULT_CONFIG.pollIntervalMinutes;
+
+      const lastSnapshot = (await ctx.state.get({
+        scopeKind: "instance",
+        stateKey: STATE_KEYS.latestQuota,
+      })) as ProviderSnapshot | null;
+
+      if (lastSnapshot) {
+        const elapsedMs = Date.now() - new Date(lastSnapshot.fetchedAt).getTime();
+        if (elapsedMs < intervalMinutes * 60_000 * 0.9) {
+          ctx.logger.info("Skipping poll — configured interval not yet elapsed", { intervalMinutes });
+          return;
+        }
+      }
+
       ctx.logger.info("Running scheduled usage poll");
       await pollAndStore(ctx);
     });
@@ -529,7 +561,19 @@ const plugin: PaperclipPlugin = definePlugin({
           },
         },
       },
-      async (_params: unknown, _runCtx: ToolRunContext): Promise<ToolResult> => {
+      async (params: unknown, _runCtx: ToolRunContext): Promise<ToolResult> => {
+        const { provider } = (params ?? {}) as { provider?: string };
+        const requestedProvider = provider?.trim().toLowerCase() || "claude";
+
+        if (requestedProvider !== "claude") {
+          return {
+            content: JSON.stringify({
+              ok: false,
+              error: `Provider '${requestedProvider}' is not supported. Currently only 'claude' is available.`,
+            }),
+          };
+        }
+
         let snapshot = (await ctx.state.get({
           scopeKind: "instance",
           stateKey: STATE_KEYS.latestQuota,

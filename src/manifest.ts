@@ -27,7 +27,6 @@ const manifest: PaperclipPluginManifestV1 = {
     "events.emit",
     "jobs.schedule",
     "http.outbound",
-    "secrets.read-ref",
     "metrics.write",
     "agent.tools.register",
     "ui.dashboardWidget.register",
@@ -71,7 +70,7 @@ const manifest: PaperclipPluginManifestV1 = {
       displayName: "Poll Provider Usage",
       description:
         "Periodically fetches usage quota data from configured AI providers and stores it for agent access.",
-      schedule: "*/15 * * * *",
+      schedule: `*/${DEFAULT_CONFIG.pollIntervalMinutes} * * * *`,
     },
   ],
   tools: [
