@@ -5,7 +5,9 @@
   "type": "module",
   "main": "./dist/manifest.js",
   "exports": {
-    ".": "./dist/manifest.js"
+    ".": "./dist/manifest.js",
+    "./worker": "./dist/worker.js",
+    "./ui": "./dist/ui/index.js"
   },
   "files": [
     "dist/",
