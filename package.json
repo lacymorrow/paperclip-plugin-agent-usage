@@ -1,42 +1,51 @@
 {
   "name": "paperclip-plugin-agent-usage",
-  "publishConfig": {
-    "access": "public"
-  },
   "version": "0.1.2",
   "description": "Track AI provider usage (Claude, etc.) and expose quota data to agents and the Paperclip dashboard",
   "type": "module",
+  "main": "./dist/manifest.js",
+  "exports": {
+    ".": "./dist/manifest.js",
+    "./worker": "./dist/worker.js",
+    "./ui": "./dist/ui/index.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "paperclipPlugin": {
     "manifest": "./dist/manifest.js",
     "worker": "./dist/worker.js",
     "ui": "./dist/ui/"
   },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
   "scripts": {
     "build": "node ./scripts/build.mjs",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
+    "dev": "node ./scripts/build.mjs --watch",
     "prepublishOnly": "npm run build",
-    "dev": "node ./scripts/build.mjs --watch"
+    "release": "shipx",
+    "release:beta": "shipx --beta"
   },
   "dependencies": {
     "@paperclipai/plugin-sdk": "latest"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0",
+    "@lacymorrow/shipx": "^0.1.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "esbuild": "^0.25.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.7.3"
   },
   "peerDependencies": {
     "react": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "paperclip",
@@ -46,7 +55,7 @@
     "anthropic"
   ],
   "license": "MIT",
-  "author": "Paperclip Company",
+  "author": "Lacy Morrow <lacy@lacymorrow.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/lacymorrow/paperclip-plugin-agent-usage"
