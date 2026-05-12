@@ -40,13 +40,6 @@ const manifest: PaperclipPluginManifestV1 = {
   instanceConfigSchema: {
     type: "object",
     properties: {
-      claudeOauthToken: {
-        type: "string",
-        title: "Claude OAuth Token",
-        description:
-          "OAuth access token for the Anthropic usage API. Found in ~/.claude/.credentials.json under claudeAiOauth.accessToken. Leave blank to auto-detect from the local machine.",
-        default: DEFAULT_CONFIG.claudeOauthToken,
-      },
       pollIntervalMinutes: {
         type: "number",
         title: "Poll Interval (minutes)",

@@ -730,7 +730,7 @@ export function AgentUsageSettingsPage(_props: PluginSettingsPageProps) {
     <div style={base.container}>
       <h3 style={base.heading}>Agent Usage Status</h3>
       <p style={{ fontSize: "12px", color: t.mutedFg, marginBottom: "12px", marginTop: 0 }}>
-        Configure credentials and polling interval via the plugin settings above.
+        OAuth credentials are auto-detected from your local Claude installation.
       </p>
 
       <div

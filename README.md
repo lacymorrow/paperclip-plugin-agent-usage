@@ -8,7 +8,7 @@ A [Paperclip](https://docs.paperclip.ing) plugin that tracks AI provider usage q
 - **Full usage page** — detailed view with usage history table
 - **Agent tools** — `get-usage` and `get-usage-summary` let agents check remaining capacity before expensive operations
 - **Scheduled polling** — fetches usage every 15 minutes (configurable)
-- **Auto-detection** — reads Claude OAuth token from local credentials or macOS Keychain
+- **Auto-detection** — reads and auto-refreshes Claude OAuth token from local credentials or macOS Keychain
 - **Reset times** — shows when each quota window resets
 
 ## Supported Providers
@@ -35,9 +35,10 @@ POST /api/plugins/install
 
 | Field | Description | Default |
 |-------|-------------|---------|
-| `claudeOauthToken` | OAuth token for Anthropic usage API. Leave blank for auto-detect. | `""` |
 | `pollIntervalMinutes` | How often to refresh usage data | `15` |
 | `providers` | Which providers to track | `["claude"]` |
+
+OAuth credentials are auto-detected from your local Claude installation (`~/.claude` credentials or macOS Keychain). Expired tokens are refreshed automatically.
 
 ## Development
 
