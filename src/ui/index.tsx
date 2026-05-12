@@ -92,7 +92,7 @@ function formatAge(isoDate: string): string {
 if (typeof document !== "undefined" && !document.getElementById("__au_kf")) {
   const s = document.createElement("style");
   s.id = "__au_kf";
-  s.textContent = "@keyframes au_spin { to { transform: rotate(360deg) } }";
+  s.textContent = "@keyframes au_spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }";
   document.head.appendChild(s);
 }
 
@@ -472,16 +472,16 @@ export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
           marginBottom: "10px",
         }}
       >
-        <span style={base.heading}>Claude Usage</span>
+        <span style={{ ...base.heading, marginBottom: 0 }}>Claude Usage</span>
         <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <span style={{ fontSize: "11px", color: didRefresh ? t.ok : t.mutedFg }}>
-            {didRefresh ? "Updated" : formatAge(snapshot.fetchedAt)}
+            {didRefresh ? "Just updated" : formatAge(snapshot.fetchedAt)}
           </span>
           <button
-            style={btnIcon()}
+            style={btnIcon({ color: didRefresh ? t.ok : t.mutedFg })}
             onClick={handleRefresh}
             disabled={refreshing}
-            title={refreshing ? "Refreshing…" : "Refresh"}
+            title={refreshing ? "Refreshing…" : didRefresh ? "Just updated" : "Refresh"}
             aria-label="Refresh usage data"
           >
             <RefreshIcon spin={refreshing} size={13} />
