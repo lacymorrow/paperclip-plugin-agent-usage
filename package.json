@@ -11,6 +11,7 @@
   },
   "files": [
     "dist/",
+    "screenshots/",
     "README.md",
     "LICENSE"
   ],
