@@ -2,6 +2,8 @@
 
 A [Paperclip](https://docs.paperclip.ing) plugin that tracks AI provider usage quotas and exposes real-time data to agents and the dashboard.
 
+![Dashboard overview](screenshots/dashboard-overview.png)
+
 ## Features
 
 - **Dashboard widget** — shows current Claude usage (session, weekly, per-model) with color-coded bars
@@ -30,6 +32,20 @@ POST /api/plugins/install
 POST /api/plugins/install
 { "packageName": "paperclip-plugin-agent-usage" }
 ```
+
+## Screenshots
+
+### Usage Page
+
+Detailed view with per-model quota bars, reset times, and usage history.
+
+![Usage page](screenshots/agent-usage-page-loaded.png)
+
+### Plugin Settings
+
+Auto-detects your Claude OAuth credentials and shows connection status.
+
+![Plugin settings](screenshots/agent-usage-settings-connected.png)
 
 ## Configuration
 
