@@ -30,7 +30,6 @@ export const STATE_KEYS = {
 } as const;
 
 export const DEFAULT_CONFIG = {
-  claudeOauthToken: "",
   pollIntervalMinutes: 15,
   providers: ["claude"] as string[],
 } as const;

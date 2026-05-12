@@ -35,9 +35,10 @@ POST /api/plugins/install
 
 | Field | Description | Default |
 |-------|-------------|---------|
-| `claudeOauthToken` | OAuth token for Anthropic usage API. Leave blank for auto-detect. | `""` |
 | `pollIntervalMinutes` | How often to refresh usage data | `15` |
 | `providers` | Which providers to track | `["claude"]` |
+
+OAuth credentials are auto-detected from your local Claude installation (`~/.claude` credentials or macOS Keychain). Token lifecycle is managed by Paperclip.
 
 ## Development
 

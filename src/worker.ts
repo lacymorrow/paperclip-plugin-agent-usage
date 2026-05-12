@@ -43,7 +43,6 @@ interface UsageHistoryEntry {
 }
 
 interface PluginConfig {
-  claudeOauthToken?: string;
   pollIntervalMinutes?: number;
   providers?: string[];
 }
@@ -374,14 +373,6 @@ async function fetchClaudeCliQuota(timeoutMs = 12_000): Promise<QuotaWindow[]> {
 // Core fetch logic
 // ---------------------------------------------------------------------------
 
-async function resolveToken(ctx: PluginContext): Promise<string | null> {
-  const config = (await ctx.config.get()) as PluginConfig;
-  if (config.claudeOauthToken && config.claudeOauthToken.trim().length > 0) {
-    return config.claudeOauthToken.trim();
-  }
-  return readLocalClaudeToken();
-}
-
 async function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
   const config = (await ctx.config.get()) as PluginConfig;
   const enabledProviders = config.providers ?? DEFAULT_CONFIG.providers;
@@ -401,7 +392,7 @@ async function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
 
   let snapshot: ProviderSnapshot;
   try {
-    const token = await resolveToken(ctx);
+    const token = await readLocalClaudeToken();
     let windows: QuotaWindow[];
     let source: string;
 
