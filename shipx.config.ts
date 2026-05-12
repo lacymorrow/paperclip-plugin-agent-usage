@@ -17,7 +17,7 @@ export default {
   bumpFiles: [
     {
       path: "src/constants.ts",
-      pattern: /PLUGIN_VERSION = "[^"]+"/,
+      pattern: /PLUGIN_VERSION\s*=\s*["'][^"']+["']/,
       replacement: (v: string) => `PLUGIN_VERSION = "${v}"`,
     },
   ],
