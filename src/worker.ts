@@ -173,117 +173,21 @@ async function fetchAnthropicUsage(token: string): Promise<QuotaWindow[]> {
 // Token resolution (auto-detect from local ~/.claude credentials)
 // ---------------------------------------------------------------------------
 
-interface OAuthCredentials {
-  accessToken: string;
-  refreshToken?: string;
-  expiresAt?: number;
-}
-
-const OAUTH_TOKEN_ENDPOINT = "https://platform.claude.com/v1/oauth/token";
-const OAUTH_CLIENT_ID = "https://claude.ai/oauth/claude-code-client-metadata";
-const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000;
-
 function claudeConfigDir(): string {
   const fromEnv = process.env.CLAUDE_CONFIG_DIR;
   if (typeof fromEnv === "string" && fromEnv.trim().length > 0) return fromEnv.trim();
   return path.join(os.homedir(), ".claude");
 }
 
-function extractOAuthCredentials(parsed: Record<string, unknown>): OAuthCredentials | null {
-  const oauth = parsed["claudeAiOauth"] as Record<string, unknown> | undefined;
-  const accessToken = oauth?.["accessToken"];
-  if (typeof accessToken !== "string" || accessToken.length === 0) return null;
-  return {
-    accessToken,
-    refreshToken: typeof oauth?.["refreshToken"] === "string" ? oauth["refreshToken"] as string : undefined,
-    expiresAt: typeof oauth?.["expiresAt"] === "number" ? oauth["expiresAt"] as number : undefined,
-  };
-}
-
-function isTokenExpired(creds: OAuthCredentials): boolean {
-  if (creds.expiresAt == null) return false;
-  return Date.now() >= creds.expiresAt - TOKEN_EXPIRY_BUFFER_MS;
-}
-
-async function refreshOAuthToken(refreshToken: string): Promise<OAuthCredentials | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
-  try {
-    const resp = await fetch(OAUTH_TOKEN_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-        client_id: OAUTH_CLIENT_ID,
-      }),
-      signal: controller.signal,
-    });
-    if (!resp.ok) return null;
-    const body = (await resp.json()) as Record<string, unknown>;
-    const accessToken = body["access_token"];
-    if (typeof accessToken !== "string" || accessToken.length === 0) return null;
-    const expiresIn = typeof body["expires_in"] === "number" ? body["expires_in"] as number : undefined;
-    return {
-      accessToken,
-      refreshToken: typeof body["refresh_token"] === "string" ? body["refresh_token"] as string : refreshToken,
-      expiresAt: expiresIn ? Date.now() + expiresIn * 1000 : undefined,
-    };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function persistRefreshedCredentials(creds: OAuthCredentials): Promise<void> {
-  if (process.platform === "darwin") {
-    try {
-      const { stdout } = await execFileAsync("security", [
-        "find-generic-password", "-s", "Claude Code-credentials", "-w",
-      ], { timeout: 3000 });
-      const parsed = JSON.parse(stdout.trim()) as Record<string, unknown>;
-      const oauth = (parsed["claudeAiOauth"] ?? {}) as Record<string, unknown>;
-      oauth["accessToken"] = creds.accessToken;
-      if (creds.refreshToken) oauth["refreshToken"] = creds.refreshToken;
-      if (creds.expiresAt) oauth["expiresAt"] = creds.expiresAt;
-      parsed["claudeAiOauth"] = oauth;
-      const updated = JSON.stringify(parsed);
-      await execFileAsync("security", [
-        "add-generic-password", "-U", "-s", "Claude Code-credentials", "-w", updated, "-a", os.userInfo().username,
-      ], { timeout: 3000 });
-    } catch {
-      // Best-effort — CLI fallback still works
-    }
-  }
-
-  const configDir = claudeConfigDir();
-  for (const filename of [".credentials.json", "credentials.json"]) {
-    const filePath = path.join(configDir, filename);
-    try {
-      const raw = await fs.readFile(filePath, "utf8");
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      const oauth = (parsed["claudeAiOauth"] ?? {}) as Record<string, unknown>;
-      oauth["accessToken"] = creds.accessToken;
-      if (creds.refreshToken) oauth["refreshToken"] = creds.refreshToken;
-      if (creds.expiresAt) oauth["expiresAt"] = creds.expiresAt;
-      parsed["claudeAiOauth"] = oauth;
-      await fs.writeFile(filePath, JSON.stringify(parsed, null, 2), "utf8");
-      return;
-    } catch {
-      // continue
-    }
-  }
-}
-
-async function readLocalClaudeCredentials(): Promise<OAuthCredentials | null> {
+async function readLocalClaudeToken(): Promise<string | null> {
   const configDir = claudeConfigDir();
   for (const filename of [".credentials.json", "credentials.json"]) {
     try {
       const raw = await fs.readFile(path.join(configDir, filename), "utf8");
       const parsed = JSON.parse(raw) as Record<string, unknown>;
-      const creds = extractOAuthCredentials(parsed);
-      if (creds) return creds;
+      const oauth = parsed["claudeAiOauth"] as Record<string, unknown> | undefined;
+      const token = oauth?.["accessToken"];
+      if (typeof token === "string" && token.length > 0) return token;
     } catch {
       // continue
     }
@@ -298,27 +202,11 @@ async function readLocalClaudeCredentials(): Promise<OAuthCredentials | null> {
         "-w",
       ], { timeout: 3000 });
       const parsed = JSON.parse(stdout.trim()) as Record<string, unknown>;
-      const creds = extractOAuthCredentials(parsed);
-      if (creds) return creds;
+      const oauth = parsed["claudeAiOauth"] as Record<string, unknown> | undefined;
+      const token = oauth?.["accessToken"];
+      if (typeof token === "string" && token.length > 0) return token;
     } catch {
       // continue
-    }
-  }
-
-  return null;
-}
-
-async function resolveValidToken(): Promise<string | null> {
-  const creds = await readLocalClaudeCredentials();
-  if (!creds) return null;
-
-  if (!isTokenExpired(creds)) return creds.accessToken;
-
-  if (creds.refreshToken) {
-    const refreshed = await refreshOAuthToken(creds.refreshToken);
-    if (refreshed) {
-      await persistRefreshedCredentials(refreshed);
-      return refreshed.accessToken;
     }
   }
 
@@ -504,7 +392,7 @@ async function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
 
   let snapshot: ProviderSnapshot;
   try {
-    const token = await resolveValidToken();
+    const token = await readLocalClaudeToken();
     let windows: QuotaWindow[];
     let source: string;
 
