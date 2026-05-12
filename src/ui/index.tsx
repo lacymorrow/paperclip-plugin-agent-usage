@@ -88,6 +88,14 @@ function formatAge(isoDate: string): string {
   return `${hours}h ago`;
 }
 
+// Inject spin keyframe once at module load for the refresh icon animation
+if (typeof document !== "undefined" && !document.getElementById("__au_kf")) {
+  const s = document.createElement("style");
+  s.id = "__au_kf";
+  s.textContent = "@keyframes au_spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }";
+  document.head.appendChild(s);
+}
+
 // ---------------------------------------------------------------------------
 // Shared base styles
 // ---------------------------------------------------------------------------
@@ -187,6 +195,46 @@ function btnSecondary(extra?: CSSProperties): CSSProperties {
     lineHeight: 1,
     ...extra,
   };
+}
+
+function btnIcon(extra?: CSSProperties): CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "3px",
+    fontFamily: "inherit",
+    borderRadius: "var(--radius, 0)",
+    border: "1px solid transparent",
+    background: "transparent",
+    color: t.mutedFg,
+    cursor: "pointer",
+    lineHeight: 1,
+    flexShrink: 0,
+    ...extra,
+  };
+}
+
+function RefreshIcon({ size = 13, spin = false }: { size?: number; spin?: boolean }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={spin ? { animation: "au_spin 0.7s linear infinite" } : undefined}
+      aria-hidden="true"
+    >
+      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+      <path d="M8 16H3v5" />
+    </svg>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -424,25 +472,25 @@ export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
           marginBottom: "10px",
         }}
       >
-        <span style={base.heading}>Claude Usage</span>
-        <span style={{ fontSize: "11px", color: t.mutedFg }}>
-          {didRefresh ? (
-            <span style={{ color: t.ok }}>Updated</span>
-          ) : (
-            formatAge(snapshot.fetchedAt)
-          )}
-        </span>
+        <span style={{ ...base.heading, marginBottom: 0 }}>Claude Usage</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <span style={{ fontSize: "11px", color: didRefresh ? t.ok : t.mutedFg }}>
+            {didRefresh ? "Just updated" : formatAge(snapshot.fetchedAt)}
+          </span>
+          <button
+            style={btnIcon({ color: didRefresh ? t.ok : t.mutedFg })}
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title={refreshing ? "Refreshing…" : didRefresh ? "Just updated" : "Refresh"}
+            aria-label="Refresh usage data"
+          >
+            <RefreshIcon spin={refreshing} size={13} />
+          </button>
+        </div>
       </div>
       {snapshot.windows.map((w, i) => (
         <UsageBar key={i} window={w} />
       ))}
-      <button
-        style={btnSecondary({ marginTop: "4px" })}
-        onClick={handleRefresh}
-        disabled={refreshing}
-      >
-        {refreshing ? "Refreshing…" : didRefresh ? "Refreshed ✓" : "Refresh"}
-      </button>
     </div>
   );
 }
@@ -464,7 +512,18 @@ export function AgentUsagePage(_props: PluginPageProps) {
 
   return (
     <div style={base.pagePadding}>
-      <h2 style={base.pageHeading}>AI Provider Usage</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+        <h2 style={{ ...base.pageHeading, marginBottom: 0 }}>AI Provider Usage</h2>
+        <button
+          style={btnIcon({ color: didRefresh ? t.ok : t.mutedFg })}
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title={refreshing ? "Refreshing…" : didRefresh ? "Just updated" : "Refresh"}
+          aria-label="Refresh usage data"
+        >
+          <RefreshIcon spin={refreshing} size={15} />
+        </button>
+      </div>
 
       {loading && <LoadingSkeleton bars={3} />}
 
@@ -483,7 +542,7 @@ export function AgentUsagePage(_props: PluginPageProps) {
           No usage data collected yet.
           <br />
           <span style={{ fontSize: "12px" }}>
-            Click "Fetch Now" or wait for the next scheduled poll.
+            Use the refresh button or wait for the next scheduled poll.
           </span>
         </div>
       )}
@@ -523,14 +582,6 @@ export function AgentUsagePage(_props: PluginPageProps) {
           ))}
         </section>
       )}
-
-      <button
-        style={btnPrimary({ marginTop: loading ? "12px" : "0" })}
-        onClick={handleRefresh}
-        disabled={refreshing}
-      >
-        {refreshing ? "Refreshing…" : didRefresh ? "Refreshed ✓" : "Refresh Now"}
-      </button>
 
       {history && history.length > 0 && (
         <section style={{ marginTop: "28px" }}>
