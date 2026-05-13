@@ -2,7 +2,7 @@
 
 A [Paperclip](https://docs.paperclip.ing) plugin that tracks AI provider usage quotas and exposes real-time data to agents and the dashboard.
 
-![Dashboard overview](screenshots/dashboard-overview.png)
+![Dashboard widget](screenshots/dashboard-widget.png)
 
 ## Features
 
