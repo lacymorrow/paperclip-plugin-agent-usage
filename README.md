@@ -41,6 +41,12 @@ Detailed view with per-model quota bars, reset times, and usage history.
 
 ![Usage page](screenshots/agent-usage-page-loaded.png)
 
+### Color-Coded Quota Bars
+
+Bars change color as usage increases — green, purple, and red — so you can spot limits at a glance.
+
+![Color-coded quota bars](screenshots/usage-colors.png)
+
 ### Plugin Settings
 
 Auto-detects your Claude OAuth credentials and shows connection status.
