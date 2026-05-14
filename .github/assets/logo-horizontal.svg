@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1618 200" fill="none">
+  <title>paperclip-plugin-agent-usage</title>
+  <g transform="translate(20, 20)">
+    <rect x="0" y="0" width="160" height="160" rx="34" fill="#db2777"/>
+    <g fill="#ffffff">
+      <rect x="28" y="40"  width="86" height="14" rx="4"/>
+      <rect x="28" y="63"  width="68" height="14" rx="4"/>
+      <rect x="28" y="86"  width="94" height="14" rx="4" opacity="0.45"/>
+    </g>
+    <circle cx="106" cy="70" r="5" fill="#ffffff"/>
+  </g>
+  <text
+    x="210"
+    y="132"
+    font-family="ui-sans-serif, system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif"
+    font-size="120"
+    font-weight="800"
+    letter-spacing="-6"
+    fill="#1a0b1f"
+  >paperclip-plugin-agent-usage</text>
+</svg>

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/lacymorrow/paperclip-plugin-agent-usage/discussions
+    about: Ask questions or share patterns.
+  - name: Paperclip docs
+    url: https://docs.paperclip.ing
+    about: How Paperclip plugins work.

@@ -1,85 +1,120 @@
-# paperclip-plugin-agent-usage
+<div align="center">
+  <a href="https://github.com/lacymorrow/paperclip-plugin-agent-usage">
+    <img src=".github/assets/logo-horizontal.svg" alt="paperclip-plugin-agent-usage" width="480">
+  </a>
 
-A [Paperclip](https://docs.paperclip.ing) plugin that tracks AI provider usage quotas and exposes real-time data to agents and the dashboard.
+  <p><strong>Track AI provider usage quotas in <a href="https://docs.paperclip.ing">Paperclip</a></strong> ➔ dashboard widget, usage page, and agent tools.</p>
 
-![Dashboard widget](screenshots/dashboard-widget.png)
+  <p>
+    <a href="https://www.npmjs.com/package/paperclip-plugin-agent-usage"><img alt="npm version" src="https://img.shields.io/npm/v/paperclip-plugin-agent-usage?style=flat"></a>
+    <a href="https://www.npmjs.com/package/paperclip-plugin-agent-usage"><img alt="npm downloads" src="https://img.shields.io/npm/dm/paperclip-plugin-agent-usage?style=flat"></a>
+    <a href="https://github.com/lacymorrow/paperclip-plugin-agent-usage/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/lacymorrow/paperclip-plugin-agent-usage/ci.yml?style=flat&label=CI"></a>
+    <a href="./LICENSE"><img alt="License" src="https://img.shields.io/npm/l/paperclip-plugin-agent-usage?style=flat"></a>
+    <a href="https://docs.paperclip.ing"><img alt="Paperclip" src="https://img.shields.io/badge/Paperclip-plugin-db2777?style=flat"></a>
+  </p>
+
+  <img src="screenshots/dashboard-widget.png" alt="Dashboard widget showing Claude usage bars" width="700">
+</div>
+
+---
+
+A [Paperclip](https://docs.paperclip.ing) plugin that tracks AI provider usage quotas and exposes real-time data to your agents and the dashboard. Agents can check remaining capacity *before* committing to an expensive call.
 
 ## Features
 
-- **Dashboard widget** — shows current Claude usage (session, weekly, per-model) with color-coded bars
-- **Full usage page** — detailed view with usage history table
-- **Agent tools** — `get-usage` and `get-usage-summary` let agents check remaining capacity before expensive operations
+- **Dashboard widget** — current Claude usage (session, weekly, per-model) with color-coded bars
+- **Full usage page** — detailed view with usage history
+- **Agent tools** — `get-usage` and `get-usage-summary` so agents can self-throttle
 - **Scheduled polling** — fetches usage every 15 minutes (configurable)
-- **Auto-detection** — reads Claude OAuth token from local credentials or macOS Keychain
-- **Reset times** — shows when each quota window resets
+- **Auto-detection** — reads Claude OAuth tokens from `~/.claude` or the macOS Keychain
+- **Reset times** — see when each quota window rolls over
 
-## Supported Providers
+## Supported providers
 
-- **Claude** (Anthropic) — via OAuth usage API or CLI fallback
+| Provider | Method |
+|---|---|
+| **Claude** (Anthropic) | OAuth usage API · CLI fallback |
 
-More providers planned.
+More providers planned. Adding one? See [CONTRIBUTING](.github/CONTRIBUTING.md).
 
-## Installation
+## Install
 
-Install into your Paperclip instance via the Plugin Manager UI or REST API:
+Install through your Paperclip instance's Plugin Manager UI, or via the REST API:
 
 ```bash
-# From local path (development)
-POST /api/plugins/install
-{ "packageName": "/path/to/paperclip-plugin-agent-usage", "isLocalPath": true }
-
-# From npm (when published)
+# From npm
 POST /api/plugins/install
 { "packageName": "paperclip-plugin-agent-usage" }
+
+# From a local path (development)
+POST /api/plugins/install
+{ "packageName": "/path/to/paperclip-plugin-agent-usage", "isLocalPath": true }
 ```
 
 ## Screenshots
 
-### Usage Page
+### Detailed usage page
 
-Detailed view with per-model quota bars, reset times, and usage history.
+Per-model quota bars, reset times, and historical usage.
 
 ![Usage page](screenshots/agent-usage-page-loaded.png)
 
-### Color-Coded Quota Bars
+### Color-coded bars
 
-Bars change color as usage increases — green, purple, and red — so you can spot limits at a glance.
+Bars shift green → purple → red as usage approaches limits, so you spot trouble at a glance.
 
 ![Color-coded quota bars](screenshots/usage-colors.png)
 
-### Plugin Settings
+### Plugin settings
 
-Auto-detects your Claude OAuth credentials and shows connection status.
+Auto-detects your Claude OAuth credentials and shows current connection status.
 
 ![Plugin settings](screenshots/agent-usage-settings-connected.png)
 
 ## Configuration
 
 | Field | Description | Default |
-|-------|-------------|---------|
+|---|---|---|
 | `pollIntervalMinutes` | How often to refresh usage data | `15` |
 | `providers` | Which providers to track | `["claude"]` |
 
-OAuth credentials are auto-detected from your local Claude installation (`~/.claude` credentials or macOS Keychain). Token lifecycle is managed by Paperclip.
+OAuth credentials are auto-detected from your local Claude install (`~/.claude` or macOS Keychain). Token lifecycle is managed by Paperclip.
+
+## Agent tools
+
+### `get-usage`
+
+Returns raw quota data (JSON) for a provider. Use this when an agent needs to decide whether to proceed with an expensive operation — call it first, branch on the result.
+
+### `get-usage-summary`
+
+Returns a human-readable summary of remaining capacity across all configured providers, including reset times. Good for narrative responses ("you have 47% of your weekly quota left, resetting in 2 days").
 
 ## Development
 
 ```bash
 npm install
-npm run build
+npm run dev          # esbuild watch
+npm run build        # bundle to dist/
 npm run typecheck
 ```
 
-## Agent Tools
+Releases are managed by [shipx](https://github.com/lacymorrow/shipx):
 
-### `get-usage`
+```bash
+npm run release           # interactive
+npm run release:beta      # pre-release with --tag beta
+```
 
-Returns raw usage quota data (JSON) for a provider. Agents call this to decide whether to proceed with expensive operations.
+## Related
 
-### `get-usage-summary`
-
-Returns a human-readable summary of remaining capacity across all providers, including reset times.
+- [Paperclip](https://docs.paperclip.ing) — the AI agent platform this plugin extends.
+- Other projects by the author: [shipx](https://github.com/lacymorrow/shipx).
 
 ## License
 
-MIT
+[MIT](./LICENSE) © [Lacy Morrow](https://lacymorrow.com)
+
+<div align="center">
+  <sub>If this saved your agent some quota, consider <a href="https://github.com/sponsors/lacymorrow">sponsoring on GitHub</a>, <a href="https://patreon.com/lacymorrow">supporting on Patreon</a>, or <a href="https://buymeacoffee.com/lm">buying a coffee</a>.</sub>
+</div>
