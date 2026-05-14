@@ -1,0 +1,15 @@
+name: Feature request
+description: New provider, agent tool, dashboard widget, or configuration option
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Your proposed change

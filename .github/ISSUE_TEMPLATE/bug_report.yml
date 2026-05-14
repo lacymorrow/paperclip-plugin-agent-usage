@@ -1,0 +1,45 @@
+name: Bug report
+description: Quota data wrong, connection failed, agent tool error
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: paperclip-plugin-agent-usage version
+      placeholder: "0.1.4"
+    validations:
+      required: true
+
+  - type: input
+    id: paperclip
+    attributes:
+      label: Paperclip version
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - Claude (OAuth)
+        - Claude (CLI fallback)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened?
+      description: Plugin logs / agent tool response. Redact credentials.
+      render: shell
+    validations:
+      required: true
