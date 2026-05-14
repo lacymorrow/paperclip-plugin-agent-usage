@@ -7,11 +7,14 @@
 ## How to test
 
 ```bash
-npm test
+npm install
+npm run typecheck
+npm run build
 ```
 
 ## Checklist
 
-- [ ] `npm test` passes locally
-- [ ] Updated the README if a public option changed
+- [ ] `npm run typecheck` passes
+- [ ] `npm run build` produces `dist/manifest.js` + `dist/worker.js`
+- [ ] Updated the README if a public option or agent tool changed
 - [ ] PR is focused (one logical change)

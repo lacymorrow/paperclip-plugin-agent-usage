@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://github.com/lacymorrow/paperclip-plugin-agent-usage">
-    <img src=".github/assets/logo-horizontal.svg" alt="paperclip-plugin-agent-usage" width="480">
+    <img src="https://raw.githubusercontent.com/lacymorrow/paperclip-plugin-agent-usage/main/.github/assets/logo-horizontal.svg" alt="paperclip-plugin-agent-usage" width="480">
   </a>
 
   <p><strong>Track AI provider usage quotas in <a href="https://docs.paperclip.ing">Paperclip</a></strong> ➔ dashboard widget, usage page, and agent tools.</p>
@@ -41,13 +41,19 @@ More providers planned. Adding one? See [CONTRIBUTING](.github/CONTRIBUTING.md).
 
 Install through your Paperclip instance's Plugin Manager UI, or via the REST API:
 
-```bash
+```http
 # From npm
 POST /api/plugins/install
-{ "packageName": "paperclip-plugin-agent-usage" }
+Content-Type: application/json
 
+{ "packageName": "paperclip-plugin-agent-usage" }
+```
+
+```http
 # From a local path (development)
 POST /api/plugins/install
+Content-Type: application/json
+
 { "packageName": "/path/to/paperclip-plugin-agent-usage", "isLocalPath": true }
 ```
 

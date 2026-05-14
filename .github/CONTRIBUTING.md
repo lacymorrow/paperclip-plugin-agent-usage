@@ -30,7 +30,7 @@ This package currently supports Claude. To add another:
 
 1. Implement the provider in `src/providers/<name>.ts` with the shared interface.
 2. Wire it up in `src/manifest.ts`.
-3. Update the `Supported Providers` section of the README.
+3. Update the `Supported providers` section of the README.
 
 ## Releasing
 
@@ -38,7 +38,7 @@ This package uses [shipx](https://github.com/lacymorrow/shipx) for releases:
 
 ```bash
 npm run release           # interactive
-npm run release:beta      # pre-release
+npm run release:beta      # pre-release with --tag beta
 ```
 
 ## Code of conduct
