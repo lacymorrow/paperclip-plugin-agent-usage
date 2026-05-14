@@ -50,10 +50,18 @@
   },
   "keywords": [
     "paperclip",
+    "paperclip-plugin",
     "plugin",
+    "ai",
+    "ai-agent",
     "ai-usage",
+    "agent",
     "claude",
-    "anthropic"
+    "anthropic",
+    "quota",
+    "usage",
+    "tracking",
+    "oauth"
   ],
   "license": "MIT",
   "author": "Lacy Morrow <lacy@lacymorrow.com>",
