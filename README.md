@@ -1,6 +1,9 @@
 <div align="center">
   <a href="https://github.com/lacymorrow/paperclip-plugin-agent-usage">
-    <img src="https://raw.githubusercontent.com/lacymorrow/paperclip-plugin-agent-usage/main/.github/assets/logo-horizontal.svg" alt="paperclip-plugin-agent-usage" width="480">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/lacymorrow/paperclip-plugin-agent-usage/main/.github/assets/logo-horizontal-dark.svg">
+      <img src="https://raw.githubusercontent.com/lacymorrow/paperclip-plugin-agent-usage/main/.github/assets/logo-horizontal.svg" alt="paperclip-plugin-agent-usage" width="480">
+    </picture>
   </a>
 
   <p><strong>Track AI provider usage quotas in <a href="https://docs.paperclip.ing">Paperclip</a></strong> ➔ dashboard widget, usage page, and agent tools.</p>
