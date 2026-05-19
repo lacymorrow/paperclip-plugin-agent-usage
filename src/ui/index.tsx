@@ -386,7 +386,7 @@ function UsageBar({ window: w }: { window: QuotaWindow }) {
 // Refresh hook — shared across widget + page
 // ---------------------------------------------------------------------------
 
-function useRefresh() {
+function useRefresh(...dataRefreshers: Array<() => void>) {
   const refresh = usePluginAction("refresh");
   const [refreshing, setRefreshing] = useState(false);
   const [didRefresh, setDidRefresh] = useState(false);
@@ -396,6 +396,7 @@ function useRefresh() {
     setDidRefresh(false);
     try {
       await refresh({});
+      for (const r of dataRefreshers) r();
       setDidRefresh(true);
       setTimeout(() => setDidRefresh(false), 2500);
     } finally {
@@ -411,11 +412,11 @@ function useRefresh() {
 // ---------------------------------------------------------------------------
 
 export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
-  const { data: snapshot, loading } = usePluginData<ProviderSnapshot | null>(
+  const { data: snapshot, loading, refresh: refreshSnapshot } = usePluginData<ProviderSnapshot | null>(
     "latest-quota",
     {}
   );
-  const { refreshing, didRefresh, handleRefresh } = useRefresh();
+  const { refreshing, didRefresh, handleRefresh } = useRefresh(refreshSnapshot);
 
   if (loading) {
     return (
@@ -500,15 +501,15 @@ export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
 // ---------------------------------------------------------------------------
 
 export function AgentUsagePage(_props: PluginPageProps) {
-  const { data: snapshot, loading } = usePluginData<ProviderSnapshot | null>(
+  const { data: snapshot, loading, refresh: refreshSnapshot } = usePluginData<ProviderSnapshot | null>(
     "latest-quota",
     {}
   );
-  const { data: history } = usePluginData<UsageHistoryEntry[]>(
+  const { data: history, refresh: refreshHistory } = usePluginData<UsageHistoryEntry[]>(
     "usage-history",
     {}
   );
-  const { refreshing, didRefresh, handleRefresh } = useRefresh();
+  const { refreshing, didRefresh, handleRefresh } = useRefresh(refreshSnapshot, refreshHistory);
 
   return (
     <div style={base.pagePadding}>
