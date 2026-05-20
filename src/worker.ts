@@ -362,11 +362,29 @@ async function fetchClaudeCliQuota(timeoutMs = 12_000): Promise<QuotaWindow[]> {
     output = `${stdout}${stderr}`;
     const cleaned = cleanTerminalText(output);
     if (!cleaned.toLowerCase().includes("current session")) {
-      throw error instanceof Error ? error : new Error(String(error));
+      throw new Error(friendlyErrorMessage(error));
     }
   }
 
   return parseClaudeCliUsageText(output);
+}
+
+// ---------------------------------------------------------------------------
+// Error normalisation — strip leaked commands & detect network failures
+// ---------------------------------------------------------------------------
+
+function friendlyErrorMessage(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+
+  if (/ECONNREFUSED|ENETUNREACH|EAI_AGAIN|ENOTFOUND|EHOSTUNREACH|ETIMEDOUT|fetch failed|network/i.test(msg)) {
+    return "Network unavailable — check your internet connection and try again.";
+  }
+
+  if (/^Command failed:/i.test(msg)) {
+    return "Claude CLI command failed — ensure Claude is installed and your network is available.";
+  }
+
+  return msg;
 }
 
 // ---------------------------------------------------------------------------
@@ -417,7 +435,7 @@ async function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
       fetchedAt: new Date().toISOString(),
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = friendlyErrorMessage(err);
     snapshot = {
       provider: "claude",
       source: null,
