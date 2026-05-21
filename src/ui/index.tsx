@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useInsertionEffect, useRef, useState, type CSSProperties } from "react";
 import {
   usePluginAction,
   usePluginData,
@@ -88,12 +88,18 @@ function formatAge(isoDate: string): string {
   return `${hours}h ago`;
 }
 
-// Inject spin keyframe once at module load for the refresh icon animation
-if (typeof document !== "undefined" && !document.getElementById("__au_kf")) {
-  const s = document.createElement("style");
-  s.id = "__au_kf";
-  s.textContent = "@keyframes au_spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }";
-  document.head.appendChild(s);
+// Injected on first mount of a component that uses the spin animation. Keeps
+// module evaluation side-effect free so importing this file in SSR/test
+// environments doesn't mutate `document`.
+function useSpinKeyframe() {
+  useInsertionEffect(() => {
+    if (typeof document === "undefined") return;
+    if (document.getElementById("__au_kf")) return;
+    const s = document.createElement("style");
+    s.id = "__au_kf";
+    s.textContent = "@keyframes au_spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }";
+    document.head.appendChild(s);
+  }, []);
 }
 
 // ---------------------------------------------------------------------------
@@ -216,6 +222,7 @@ function btnIcon(extra?: CSSProperties): CSSProperties {
 }
 
 function RefreshIcon({ size = 13, spin = false }: { size?: number; spin?: boolean }) {
+  useSpinKeyframe();
   return (
     <svg
       width={size}
@@ -390,21 +397,70 @@ function useRefresh(...dataRefreshers: Array<() => void>) {
   const refresh = usePluginAction("refresh");
   const [refreshing, setRefreshing] = useState(false);
   const [didRefresh, setDidRefresh] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const didRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (didRefreshTimerRef.current != null) {
+        clearTimeout(didRefreshTimerRef.current);
+        didRefreshTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleRefresh = async () => {
+    if (didRefreshTimerRef.current != null) {
+      clearTimeout(didRefreshTimerRef.current);
+      didRefreshTimerRef.current = null;
+    }
     setRefreshing(true);
     setDidRefresh(false);
+    setError(null);
     try {
       await refresh({});
+      if (!mountedRef.current) return;
       for (const r of dataRefreshers) r();
       setDidRefresh(true);
-      setTimeout(() => setDidRefresh(false), 2500);
+      didRefreshTimerRef.current = setTimeout(() => {
+        didRefreshTimerRef.current = null;
+        setDidRefresh(false);
+      }, 2500);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setRefreshing(false);
+      if (mountedRef.current) setRefreshing(false);
     }
   };
 
-  return { refreshing, didRefresh, handleRefresh };
+  return { refreshing, didRefresh, error, handleRefresh };
+}
+
+// ---------------------------------------------------------------------------
+// Inline refresh-error banner — surfaces failures from useRefresh
+// ---------------------------------------------------------------------------
+
+function RefreshErrorBanner({ message }: { message: string }) {
+  return (
+    <div
+      role="alert"
+      style={{
+        padding: "8px 10px",
+        marginBottom: "8px",
+        borderRadius: "var(--radius, 0)",
+        border: `1px solid ${t.destructive}`,
+        background: t.card,
+        color: t.destructive,
+        fontSize: "12px",
+      }}
+    >
+      Refresh failed: {message}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -416,7 +472,7 @@ export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
     "latest-quota",
     {}
   );
-  const { refreshing, didRefresh, handleRefresh } = useRefresh(refreshSnapshot);
+  const { refreshing, didRefresh, error: refreshError, handleRefresh } = useRefresh(refreshSnapshot);
 
   if (loading) {
     return (
@@ -429,6 +485,7 @@ export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
   if (!snapshot) {
     return (
       <div style={base.container}>
+        {refreshError && <RefreshErrorBanner message={refreshError} />}
         <div
           style={{
             padding: "12px",
@@ -465,6 +522,7 @@ export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
 
   return (
     <div style={base.container}>
+      {refreshError && <RefreshErrorBanner message={refreshError} />}
       <div
         style={{
           display: "flex",
@@ -509,7 +567,7 @@ export function AgentUsagePage(_props: PluginPageProps) {
     "usage-history",
     {}
   );
-  const { refreshing, didRefresh, handleRefresh } = useRefresh(refreshSnapshot, refreshHistory);
+  const { refreshing, didRefresh, error: refreshError, handleRefresh } = useRefresh(refreshSnapshot, refreshHistory);
 
   return (
     <div style={base.pagePadding}>
@@ -525,6 +583,8 @@ export function AgentUsagePage(_props: PluginPageProps) {
           <RefreshIcon spin={refreshing} size={15} />
         </button>
       </div>
+
+      {refreshError && <RefreshErrorBanner message={refreshError} />}
 
       {loading && <LoadingSkeleton bars={3} />}
 

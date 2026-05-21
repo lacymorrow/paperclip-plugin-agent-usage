@@ -231,8 +231,8 @@ function stripBackspaces(text: string): string {
 
 function stripAnsi(text: string): string {
   return text
-    .replace(/\][^]*(?:|\\)/g, "")
-    .replace(/(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "");
+    .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, "")
+    .replace(/\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-Z\\-_])/g, "");
 }
 
 function cleanTerminalText(text: string): string {
@@ -391,7 +391,20 @@ function friendlyErrorMessage(err: unknown): string {
 // Core fetch logic
 // ---------------------------------------------------------------------------
 
-async function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
+// Serialize pollAndStore so the scheduled job, the `refresh` action, and the
+// tool-driven stale-snapshot fallback never read-modify-write `usage-history`
+// concurrently. Each caller queues onto a shared promise chain and runs its
+// own poll + append after the previous call finishes, so no history entries
+// are lost. Failures don't poison the chain.
+let pollChain: Promise<unknown> = Promise.resolve();
+
+function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
+  const next = pollChain.then(() => runPollAndStore(ctx));
+  pollChain = next.catch(() => undefined);
+  return next;
+}
+
+async function runPollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
   const config = (await ctx.config.get()) as PluginConfig;
   const enabledProviders = config.providers ?? DEFAULT_CONFIG.providers;
 
@@ -484,6 +497,15 @@ function formatTimeDelta(isoDate: string): string {
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours}h`;
   return `${Math.round(hours / 24)}d`;
+}
+
+// Tool handlers treat a snapshot as stale when it's older than the configured
+// poll interval. Floored at 5 minutes so an aggressive `pollIntervalMinutes: 1`
+// doesn't burn CLI invocations on every tool call.
+async function staleThresholdMs(ctx: PluginContext): Promise<number> {
+  const config = (await ctx.config.get()) as PluginConfig;
+  const intervalMinutes = config.pollIntervalMinutes ?? DEFAULT_CONFIG.pollIntervalMinutes;
+  return Math.max(intervalMinutes, 5) * 60_000;
 }
 
 function buildSummary(snapshot: ProviderSnapshot): string {
@@ -588,9 +610,10 @@ const plugin: PaperclipPlugin = definePlugin({
           stateKey: STATE_KEYS.latestQuota,
         })) as ProviderSnapshot | null;
 
+        const thresholdMs = await staleThresholdMs(ctx);
         if (
           !snapshot ||
-          Date.now() - new Date(snapshot.fetchedAt).getTime() > 20 * 60 * 1000
+          Date.now() - new Date(snapshot.fetchedAt).getTime() > thresholdMs
         ) {
           snapshot = await pollAndStore(ctx);
         }
@@ -616,9 +639,10 @@ const plugin: PaperclipPlugin = definePlugin({
           stateKey: STATE_KEYS.latestQuota,
         })) as ProviderSnapshot | null;
 
+        const thresholdMs = await staleThresholdMs(ctx);
         if (
           !snapshot ||
-          Date.now() - new Date(snapshot.fetchedAt).getTime() > 20 * 60 * 1000
+          Date.now() - new Date(snapshot.fetchedAt).getTime() > thresholdMs
         ) {
           snapshot = await pollAndStore(ctx);
         }
