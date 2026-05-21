@@ -67,6 +67,6 @@
   "author": "Lacy Morrow <lacy@lacymorrow.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lacymorrow/paperclip-plugin-agent-usage"
+    "url": "git+https://github.com/lacymorrow/paperclip-plugin-agent-usage.git"
   }
 }
