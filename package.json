@@ -1,6 +1,6 @@
 {
   "name": "paperclip-plugin-agent-usage",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Track AI provider usage (Claude, etc.) and expose quota data to agents and the Paperclip dashboard",
   "type": "module",
   "main": "./dist/manifest.js",
@@ -67,6 +67,6 @@
   "author": "Lacy Morrow <lacy@lacymorrow.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lacymorrow/paperclip-plugin-agent-usage"
+    "url": "git+https://github.com/lacymorrow/paperclip-plugin-agent-usage.git"
   }
 }

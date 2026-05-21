@@ -1,5 +1,5 @@
 export const PLUGIN_ID = "paperclip-plugin-agent-usage";
-export const PLUGIN_VERSION = "0.1.4";
+export const PLUGIN_VERSION = "0.1.5";
 export const PAGE_ROUTE = "agent-usage";
 
 export const SLOT_IDS = {
