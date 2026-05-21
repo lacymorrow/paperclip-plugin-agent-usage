@@ -236,9 +236,7 @@ function stripAnsi(text: string): string {
 }
 
 function cleanTerminalText(text: string): string {
-  return stripAnsi(stripBackspaces(text))
-    .replace(/ /g, "")
-    .replace(/\r/g, "\n");
+  return stripAnsi(stripBackspaces(text)).replace(/\r/g, "\n");
 }
 
 function normalizeForLabelSearch(text: string): string {
