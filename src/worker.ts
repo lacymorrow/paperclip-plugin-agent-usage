@@ -231,8 +231,8 @@ function stripBackspaces(text: string): string {
 
 function stripAnsi(text: string): string {
   return text
-    .replace(/\][^]*(?:|\\)/g, "")
-    .replace(/(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "");
+    .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, "")
+    .replace(/\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "");
 }
 
 function cleanTerminalText(text: string): string {
