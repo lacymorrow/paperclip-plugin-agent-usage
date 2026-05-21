@@ -73,7 +73,7 @@ interface AnthropicUsageResponse {
 }
 
 function toPercent(utilization: number | null | undefined): number | null {
-  if (utilization == null) return null;
+  if (utilization == null || !Number.isFinite(utilization)) return null;
   return Math.max(0, Math.min(100, Math.round(utilization * 100)));
 }
 
