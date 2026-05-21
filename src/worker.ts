@@ -74,7 +74,7 @@ interface AnthropicUsageResponse {
 
 function toPercent(utilization: number | null | undefined): number | null {
   if (utilization == null) return null;
-  return Math.min(100, Math.round(utilization < 1 ? utilization * 100 : utilization));
+  return Math.max(0, Math.min(100, Math.round(utilization * 100)));
 }
 
 function formatCurrency(value: number, currency: string | null | undefined): string {
