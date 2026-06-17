@@ -339,8 +339,8 @@ function quoteForShell(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-async function fetchClaudeCliQuota(timeoutMs = 12_000): Promise<QuotaWindow[]> {
-  const feed = "(sleep 2; printf '/usage\\r'; sleep 6; printf '\\033'; sleep 1; printf '\\003')";
+async function runClaudeCliCommand(timeoutMs: number): Promise<QuotaWindow[]> {
+  const feed = "(sleep 3; printf '/usage\\r'; sleep 8; printf '\\033'; sleep 1; printf '\\003')";
   const claudeCommand = "claude --tools \"\"";
   const command = process.platform === "darwin"
     ? `${feed} | script -q /dev/null ${claudeCommand}`
@@ -365,6 +365,14 @@ async function fetchClaudeCliQuota(timeoutMs = 12_000): Promise<QuotaWindow[]> {
   }
 
   return parseClaudeCliUsageText(output);
+}
+
+async function fetchClaudeCliQuota(timeoutMs = 20_000): Promise<QuotaWindow[]> {
+  try {
+    return await runClaudeCliCommand(timeoutMs);
+  } catch {
+    return await runClaudeCliCommand(timeoutMs);
+  }
 }
 
 // ---------------------------------------------------------------------------
