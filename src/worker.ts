@@ -370,7 +370,8 @@ async function runClaudeCliCommand(timeoutMs: number): Promise<QuotaWindow[]> {
 async function fetchClaudeCliQuota(timeoutMs = 20_000): Promise<QuotaWindow[]> {
   try {
     return await runClaudeCliCommand(timeoutMs);
-  } catch {
+  } catch (error) {
+    console.warn("CLI quota fetch failed on first attempt, retrying…", error);
     return await runClaudeCliCommand(timeoutMs);
   }
 }
