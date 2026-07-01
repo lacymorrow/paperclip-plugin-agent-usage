@@ -346,32 +346,37 @@ async function runClaudeCliCommand(timeoutMs: number): Promise<QuotaWindow[]> {
     ? `${feed} | script -q /dev/null ${claudeCommand}`
     : `${feed} | script -q -e -f -c ${quoteForShell(claudeCommand)} /dev/null`;
 
-  let output = "";
   try {
-    const { stdout, stderr } = await execFileAsync("sh", ["-c", command], {
-      env: createClaudeQuotaEnv(),
-      timeout: timeoutMs,
-      maxBuffer: 8 * 1024 * 1024,
-    });
-    output = `${stdout}${stderr}`;
-  } catch (error) {
-    const stdout = typeof error === "object" && error !== null && "stdout" in error && typeof error.stdout === "string" ? error.stdout : "";
-    const stderr = typeof error === "object" && error !== null && "stderr" in error && typeof error.stderr === "string" ? error.stderr : "";
-    output = `${stdout}${stderr}`;
-    const cleaned = cleanTerminalText(output);
-    if (!cleaned.toLowerCase().includes("current session")) {
-      throw new Error(friendlyErrorMessage(error));
+    let output = "";
+    try {
+      const { stdout, stderr } = await execFileAsync("sh", ["-c", command], {
+        env: createClaudeQuotaEnv(),
+        timeout: timeoutMs,
+        maxBuffer: 8 * 1024 * 1024,
+      });
+      output = `${stdout}${stderr}`;
+    } catch (error) {
+      const stdout = typeof error === "object" && error !== null && "stdout" in error && typeof error.stdout === "string" ? error.stdout : "";
+      const stderr = typeof error === "object" && error !== null && "stderr" in error && typeof error.stderr === "string" ? error.stderr : "";
+      output = `${stdout}${stderr}`;
+      const cleaned = cleanTerminalText(output);
+      if (!cleaned.toLowerCase().includes("current session")) {
+        throw error;
+      }
     }
-  }
 
-  return parseClaudeCliUsageText(output);
+    return parseClaudeCliUsageText(output);
+  } catch (error) {
+    throw new Error(friendlyErrorMessage(error));
+  }
 }
 
 async function fetchClaudeCliQuota(timeoutMs = 20_000): Promise<QuotaWindow[]> {
   try {
     return await runClaudeCliCommand(timeoutMs);
-  } catch (error) {
-    console.warn("CLI quota fetch failed on first attempt, retrying…", error);
+  } catch (firstError) {
+    const msg = firstError instanceof Error ? firstError.message : String(firstError);
+    console.warn(`CLI quota fetch failed on first attempt, retrying: ${msg}`);
     return await runClaudeCliCommand(timeoutMs);
   }
 }
@@ -387,7 +392,15 @@ function friendlyErrorMessage(err: unknown): string {
     return "Network unavailable — check your internet connection and try again.";
   }
 
-  if (/^Command failed:/i.test(msg)) {
+  if (/ENOENT|EACCES|permission denied/i.test(msg)) {
+    return "Claude CLI not accessible — ensure Claude is installed and on your PATH.";
+  }
+
+  if (/Command failed:|SIGTERM|SIGKILL|killed/i.test(msg)) {
+    return "Claude CLI command failed — ensure Claude is installed and your network is available.";
+  }
+
+  if (/sh\s+-c|script\s+-q|printf\b/i.test(msg)) {
     return "Claude CLI command failed — ensure Claude is installed and your network is available.";
   }
 
