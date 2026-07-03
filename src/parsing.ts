@@ -223,7 +223,11 @@ export function friendlyErrorMessage(err: unknown): string {
     return "Network unavailable — check your internet connection and try again.";
   }
 
-  if (/^Command failed:/i.test(msg)) {
+  if (/ENOENT|EACCES|permission denied/i.test(msg)) {
+    return "Claude CLI not accessible — ensure Claude is installed and on your PATH.";
+  }
+
+  if (/Command failed:|SIGTERM|SIGKILL|killed|sh\s+-c|script\s+-q|printf\b/i.test(msg)) {
     return "Claude CLI command failed — ensure Claude is installed and your network is available.";
   }
 

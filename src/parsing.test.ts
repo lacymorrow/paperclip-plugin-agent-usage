@@ -396,6 +396,30 @@ test("friendlyErrorMessage: scrubs 'Command failed: ...' shell leakage (regressi
   );
 });
 
+test("friendlyErrorMessage: catches ENOENT and EACCES (regression: LAC-2503)", () => {
+  const expected = "Claude CLI not accessible — ensure Claude is installed and on your PATH.";
+  assert.equal(friendlyErrorMessage(new Error("spawn sh ENOENT")), expected);
+  assert.equal(friendlyErrorMessage(new Error("EACCES: permission denied, exec '/usr/bin/claude'")), expected);
+});
+
+test("friendlyErrorMessage: catches signal kills (regression: LAC-2503)", () => {
+  const expected = "Claude CLI command failed — ensure Claude is installed and your network is available.";
+  assert.equal(friendlyErrorMessage(new Error("process killed by SIGTERM")), expected);
+  assert.equal(friendlyErrorMessage(new Error("child process killed")), expected);
+});
+
+test("friendlyErrorMessage: catches leaked shell commands without Command failed: prefix (regression: LAC-2503)", () => {
+  const expected = "Claude CLI command failed — ensure Claude is installed and your network is available.";
+  assert.equal(
+    friendlyErrorMessage(new Error("sh -c (sleep 3; printf '/usage') failed")),
+    expected,
+  );
+  assert.equal(
+    friendlyErrorMessage(new Error("script -q /dev/null claude exited with code 1")),
+    expected,
+  );
+});
+
 test("friendlyErrorMessage: passes through unrelated errors unchanged", () => {
   assert.equal(friendlyErrorMessage(new Error("Something else broke")), "Something else broke");
   assert.equal(friendlyErrorMessage("plain string error"), "plain string error");
