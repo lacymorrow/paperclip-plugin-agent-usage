@@ -13,6 +13,7 @@ import {
   type ToolRunContext,
 } from "@paperclipai/plugin-sdk";
 import { DEFAULT_CONFIG, JOB_KEYS, STATE_KEYS, TOOL_NAMES } from "./constants.js";
+import { friendlyErrorMessage } from "./parsing.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -381,31 +382,6 @@ async function fetchClaudeCliQuota(timeoutMs = 20_000): Promise<QuotaWindow[]> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Error normalisation — strip leaked commands & detect network failures
-// ---------------------------------------------------------------------------
-
-function friendlyErrorMessage(err: unknown): string {
-  const msg = err instanceof Error ? err.message : String(err);
-
-  if (/ECONNREFUSED|ENETUNREACH|EAI_AGAIN|ENOTFOUND|EHOSTUNREACH|ETIMEDOUT|fetch failed|network/i.test(msg)) {
-    return "Network unavailable — check your internet connection and try again.";
-  }
-
-  if (/ENOENT|EACCES|permission denied/i.test(msg)) {
-    return "Claude CLI not accessible — ensure Claude is installed and on your PATH.";
-  }
-
-  if (/Command failed:|SIGTERM|SIGKILL|killed/i.test(msg)) {
-    return "Claude CLI command failed — ensure Claude is installed and your network is available.";
-  }
-
-  if (/sh\s+-c|script\s+-q|printf\b/i.test(msg)) {
-    return "Claude CLI command failed — ensure Claude is installed and your network is available.";
-  }
-
-  return msg;
-}
 
 // ---------------------------------------------------------------------------
 // Core fetch logic

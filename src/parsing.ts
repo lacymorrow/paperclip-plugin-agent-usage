@@ -227,11 +227,7 @@ export function friendlyErrorMessage(err: unknown): string {
     return "Claude CLI not accessible — ensure Claude is installed and on your PATH.";
   }
 
-  if (/Command failed:|SIGTERM|SIGKILL|killed/i.test(msg)) {
-    return "Claude CLI command failed — ensure Claude is installed and your network is available.";
-  }
-
-  if (/sh\s+-c|script\s+-q|printf\b/i.test(msg)) {
+  if (/Command failed:|SIGTERM|SIGKILL|killed|sh\s+-c|script\s+-q|printf\b/i.test(msg)) {
     return "Claude CLI command failed — ensure Claude is installed and your network is available.";
   }
 
