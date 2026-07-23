@@ -108,6 +108,17 @@ export function parseAnthropicResponse(body: AnthropicUsageResponse): QuotaWindo
   return windows;
 }
 
+// Extracts the signed-in account email from Claude Code's main config
+// (`.claude.json`), whose `oauthAccount.emailAddress` identifies the account.
+export function extractAccountEmail(parsed: unknown): string | null {
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const account = (parsed as Record<string, unknown>)["oauthAccount"];
+  if (typeof account !== "object" || account === null) return null;
+  const email = (account as Record<string, unknown>)["emailAddress"];
+  if (typeof email === "string" && email.trim().length > 0) return email.trim();
+  return null;
+}
+
 export function stripBackspaces(text: string): string {
   let out = "";
   for (const char of text) {

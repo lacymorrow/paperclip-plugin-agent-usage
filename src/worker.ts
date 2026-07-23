@@ -32,6 +32,7 @@ interface QuotaWindow {
 interface ProviderSnapshot {
   provider: string;
   source: string | null;
+  account: string | null;
   ok: boolean;
   error: string | null;
   windows: QuotaWindow[];
@@ -211,6 +212,38 @@ async function readLocalClaudeToken(): Promise<string | null> {
     }
   }
 
+  return null;
+}
+
+function extractAccountEmail(parsed: unknown): string | null {
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const account = (parsed as Record<string, unknown>)["oauthAccount"];
+  if (typeof account !== "object" || account === null) return null;
+  const email = (account as Record<string, unknown>)["emailAddress"];
+  if (typeof email === "string" && email.trim().length > 0) return email.trim();
+  return null;
+}
+
+// The signed-in account lives in Claude Code's main config (`.claude.json`),
+// which sits inside CLAUDE_CONFIG_DIR when that's set and at ~/.claude.json
+// otherwise — a different file from the credentials read above.
+async function readLocalClaudeAccount(): Promise<string | null> {
+  const candidates: string[] = [];
+  const fromEnv = process.env.CLAUDE_CONFIG_DIR;
+  if (typeof fromEnv === "string" && fromEnv.trim().length > 0) {
+    candidates.push(path.join(fromEnv.trim(), ".claude.json"));
+  }
+  candidates.push(path.join(os.homedir(), ".claude.json"));
+
+  for (const file of candidates) {
+    try {
+      const raw = await fs.readFile(file, "utf8");
+      const email = extractAccountEmail(JSON.parse(raw));
+      if (email) return email;
+    } catch {
+      // continue
+    }
+  }
   return null;
 }
 
@@ -403,11 +436,13 @@ function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
 async function runPollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
   const config = (await ctx.config.get()) as PluginConfig;
   const enabledProviders = config.providers ?? DEFAULT_CONFIG.providers;
+  const account = await readLocalClaudeAccount();
 
   if (!enabledProviders.includes("claude")) {
     const snapshot: ProviderSnapshot = {
       provider: "claude",
       source: null,
+      account,
       ok: false,
       error: "Provider 'claude' is not enabled in config",
       windows: [],
@@ -438,6 +473,7 @@ async function runPollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
     snapshot = {
       provider: "claude",
       source,
+      account,
       ok: true,
       error: null,
       windows,
@@ -448,6 +484,7 @@ async function runPollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
     snapshot = {
       provider: "claude",
       source: null,
+      account,
       ok: false,
       error: message,
       windows: [],
@@ -508,7 +545,8 @@ function buildSummary(snapshot: ProviderSnapshot): string {
   if (!snapshot.ok) return `Claude usage unavailable: ${snapshot.error}`;
   if (snapshot.windows.length === 0) return "No usage data available.";
 
-  const lines: string[] = [`Claude usage (as of ${snapshot.fetchedAt}):`];
+  const accountSuffix = snapshot.account ? ` for ${snapshot.account}` : "";
+  const lines: string[] = [`Claude usage${accountSuffix} (as of ${snapshot.fetchedAt}):`];
   for (const w of snapshot.windows) {
     let line = `  ${w.label}: `;
     if (w.usedPercent != null) {
