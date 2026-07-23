@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import {
   canonicalQuotaLabel,
   cleanTerminalText,
+  extractAccountEmail,
   formatCurrency,
   formatTimeDelta,
   friendlyErrorMessage,
@@ -440,4 +441,35 @@ test("formatTimeDelta: minute / hour / day buckets", () => {
   assert.equal(formatTimeDelta("2026-05-21T12:30:00Z", now), "30m");
   assert.equal(formatTimeDelta("2026-05-21T15:00:00Z", now), "3h");
   assert.equal(formatTimeDelta("2026-05-24T12:00:00Z", now), "3d");
+});
+
+// ---------------------------------------------------------------------------
+// extractAccountEmail (LAC-3028)
+// ---------------------------------------------------------------------------
+
+test("extractAccountEmail: reads oauthAccount.emailAddress", () => {
+  assert.equal(
+    extractAccountEmail({ oauthAccount: { emailAddress: "user@example.com" } }),
+    "user@example.com",
+  );
+});
+
+test("extractAccountEmail: trims surrounding whitespace", () => {
+  assert.equal(
+    extractAccountEmail({ oauthAccount: { emailAddress: "  user@example.com  " } }),
+    "user@example.com",
+  );
+});
+
+test("extractAccountEmail: null for missing, empty, or malformed shapes", () => {
+  assert.equal(extractAccountEmail(null), null);
+  assert.equal(extractAccountEmail(undefined), null);
+  assert.equal(extractAccountEmail("string"), null);
+  assert.equal(extractAccountEmail({}), null);
+  assert.equal(extractAccountEmail({ oauthAccount: null }), null);
+  assert.equal(extractAccountEmail({ oauthAccount: "not-an-object" }), null);
+  assert.equal(extractAccountEmail({ oauthAccount: {} }), null);
+  assert.equal(extractAccountEmail({ oauthAccount: { emailAddress: "" } }), null);
+  assert.equal(extractAccountEmail({ oauthAccount: { emailAddress: "   " } }), null);
+  assert.equal(extractAccountEmail({ oauthAccount: { emailAddress: 42 } }), null);
 });

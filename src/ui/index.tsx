@@ -22,6 +22,8 @@ interface QuotaWindow {
 interface ProviderSnapshot {
   provider: string;
   source: string | null;
+  // Optional: snapshots stored before the account field existed lack it.
+  account?: string | null;
   ok: boolean;
   error: string | null;
   windows: QuotaWindow[];
@@ -547,6 +549,11 @@ export function AgentUsageDashboardWidget(_props: PluginWidgetProps) {
           </button>
         </div>
       </div>
+      {snapshot.account && (
+        <div style={{ ...base.meta, marginTop: 0, marginBottom: "10px" }}>
+          Signed in as {snapshot.account}
+        </div>
+      )}
       {snapshot.windows.map((w, i) => (
         <UsageBar key={i} window={w} />
       ))}
@@ -630,6 +637,7 @@ export function AgentUsagePage(_props: PluginPageProps) {
               Current Quota — {snapshot.provider}
             </h3>
             <span style={base.metaInline}>
+              {snapshot.account && <>{snapshot.account} · </>}
               via {snapshot.source} ·{" "}
               {didRefresh ? (
                 <span style={{ color: t.ok }}>just updated</span>
@@ -810,6 +818,9 @@ export function AgentUsageSettingsPage(_props: PluginSettingsPageProps) {
         </Row>
         <Row label="Provider">
           <span style={{ color: t.fg }}>{snapshot?.provider ?? "—"}</span>
+        </Row>
+        <Row label="Account">
+          <span style={{ color: t.fg }}>{snapshot?.account ?? "—"}</span>
         </Row>
         <Row label="Token source">
           <span style={{ color: t.fg }}>{snapshot?.source ?? "—"}</span>
