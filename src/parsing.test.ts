@@ -4,6 +4,12 @@
 //   LAC-2004 — toPercent reported 1% for 100%-utilized windows
 //   LAC-2005 — stripAnsi alternation order (CSI before single-char)
 //   LAC-2023 — cleanTerminalText was stripping spaces, breaking guards
+//   2026-08-03 — toPercent treated `utilization` as a 0..1 fraction and
+//     multiplied by 100. The real API returns it as a whole percentage
+//     already (confirmed against the same response's own `limits[].percent`
+//     field), so any real usage >=1% was clamping straight to 100%. This
+//     reverses LAC-2004's fix, which was chasing the opposite bug against
+//     the wrong assumption about the API's units.
 //
 // Run with: npm test
 
@@ -29,7 +35,7 @@ import {
 } from "./parsing.ts";
 
 // ---------------------------------------------------------------------------
-// toPercent — LAC-2004
+// toPercent
 // ---------------------------------------------------------------------------
 
 test("toPercent: returns null for nullish input", () => {
@@ -43,22 +49,27 @@ test("toPercent: returns null for non-finite input (NaN, Infinity)", () => {
   assert.equal(toPercent(Number.NEGATIVE_INFINITY), null);
 });
 
-test("toPercent: scales 0..1 fractions to 0..100", () => {
+test("toPercent: passes whole percentages through, rounding fractional ones", () => {
   assert.equal(toPercent(0), 0);
-  assert.equal(toPercent(0.5), 50);
-  assert.equal(toPercent(0.755), 76);
+  assert.equal(toPercent(50), 50);
+  assert.equal(toPercent(75.6), 76);
 });
 
-test("toPercent: 100% utilization reports 100 (regression: LAC-2004)", () => {
-  // The pre-fix code treated `utilization < 1` as a fraction and `>= 1` as
-  // already-percent, so utilization === 1.0 fell into the "already-percent"
-  // branch and became 1, not 100.
-  assert.equal(toPercent(1), 100);
-  assert.equal(toPercent(0.999), 100);
+test("toPercent: low utilization stays low (regression: 2026-08-03)", () => {
+  // A real low-usage account returned utilization: 1.0 (1%) and 31.0 (31%),
+  // corroborated by the same response's limits[].percent field. The
+  // pre-fix code multiplied by 100, reporting 100% and clamping the 31%
+  // case to 100% too — every non-trivial usage value read as "fully used."
+  assert.equal(toPercent(1), 1);
+  assert.equal(toPercent(31), 31);
+});
+
+test("toPercent: 100% utilization reports 100", () => {
+  assert.equal(toPercent(100), 100);
 });
 
 test("toPercent: clamps over-100 values to 100", () => {
-  assert.equal(toPercent(1.5), 100);
+  assert.equal(toPercent(150), 100);
   assert.equal(toPercent(99999), 100);
 });
 
@@ -294,7 +305,7 @@ test("parseClaudeCliUsageText: throws when no session window can be found", () =
 });
 
 // ---------------------------------------------------------------------------
-// parseAnthropicResponse — LAC-2004
+// parseAnthropicResponse
 // ---------------------------------------------------------------------------
 
 test("parseAnthropicResponse: empty body produces zero windows", () => {
@@ -302,11 +313,13 @@ test("parseAnthropicResponse: empty body produces zero windows", () => {
 });
 
 test("parseAnthropicResponse: builds windows for every present field", () => {
+  // utilization is a whole percentage already (50 means 50%), not a 0..1
+  // fraction — see the 2026-08-03 regression note at the top of this file.
   const out = parseAnthropicResponse({
-    five_hour: { utilization: 0.5, resets_at: "2026-05-21T12:00:00Z" },
-    seven_day: { utilization: 0.25, resets_at: null },
-    seven_day_sonnet: { utilization: 0.1, resets_at: null },
-    seven_day_opus: { utilization: 0.9, resets_at: null },
+    five_hour: { utilization: 50, resets_at: "2026-05-21T12:00:00Z" },
+    seven_day: { utilization: 25, resets_at: null },
+    seven_day_sonnet: { utilization: 10, resets_at: null },
+    seven_day_opus: { utilization: 90, resets_at: null },
   });
   assert.deepEqual(
     out.map((w) => ({ label: w.label, usedPercent: w.usedPercent, resetsAt: w.resetsAt })),
@@ -319,9 +332,16 @@ test("parseAnthropicResponse: builds windows for every present field", () => {
   );
 });
 
-test("parseAnthropicResponse: 100% utilization round-trips to 100 (regression: LAC-2004)", () => {
+test("parseAnthropicResponse: low utilization stays low (regression: 2026-08-03)", () => {
   const out = parseAnthropicResponse({
     five_hour: { utilization: 1, resets_at: null },
+  });
+  assert.equal(out[0].usedPercent, 1);
+});
+
+test("parseAnthropicResponse: 100% utilization round-trips to 100", () => {
+  const out = parseAnthropicResponse({
+    five_hour: { utilization: 100, resets_at: null },
   });
   assert.equal(out[0].usedPercent, 100);
 });
@@ -343,7 +363,7 @@ test("parseAnthropicResponse: extra_usage enabled emits formatted currency label
       is_enabled: true,
       monthly_limit: 5000, // cents → $50.00
       used_credits: 1234, // cents → $12.34
-      utilization: 0.2468,
+      utilization: 24.68,
       currency: "USD",
     },
   });

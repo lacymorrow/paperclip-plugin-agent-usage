@@ -30,9 +30,15 @@ export interface AnthropicUsageResponse {
   extra_usage?: AnthropicExtraUsage | null;
 }
 
+// The Anthropic OAuth usage API returns `utilization` as a whole percentage
+// already (1.0 means 1% used, not 100%) — confirmed against the same
+// response's own `limits[].percent` field, which reports the identical
+// value under an unambiguous name. An earlier version of this function
+// treated `utilization` as a 0..1 fraction and multiplied by 100, which
+// clamped any real (non-zero) usage straight to 100%.
 export function toPercent(utilization: number | null | undefined): number | null {
   if (utilization == null || !Number.isFinite(utilization)) return null;
-  return Math.max(0, Math.min(100, Math.round(utilization * 100)));
+  return Math.max(0, Math.min(100, Math.round(utilization)));
 }
 
 export function formatCurrency(value: number, currency: string | null | undefined): string {

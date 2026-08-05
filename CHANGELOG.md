@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Install code blocks switched from `bash` to `http` fence (matches the pseudo-HTTP REST shape).
 - PR template + CONTRIBUTING aligned with actual `npm run typecheck` / `npm run build` workflow.
 - npm keywords expanded (paperclip-plugin, ai, ai-agent, agent, quota, usage, tracking, oauth).
+- `worker.ts` now imports its parsing/formatting helpers from `parsing.ts` instead of maintaining a second, drifting copy of each.
+
+### Fixed
+
+- `toPercent` was multiplying `utilization` by 100, assuming a 0..1 fraction. The Anthropic OAuth usage API actually returns it as a whole percentage already, so any real (non-zero) usage was clamping straight to 100%.
 
 ## [0.1.4] and earlier
 
