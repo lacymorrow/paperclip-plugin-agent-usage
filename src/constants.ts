@@ -5,13 +5,11 @@ export const PAGE_ROUTE = "agent-usage";
 export const SLOT_IDS = {
   page: "agent-usage-page",
   dashboardWidget: "agent-usage-dashboard-widget",
-  settingsPage: "agent-usage-settings-page",
 } as const;
 
 export const EXPORT_NAMES = {
   page: "AgentUsagePage",
   dashboardWidget: "AgentUsageDashboardWidget",
-  settingsPage: "AgentUsageSettingsPage",
 } as const;
 
 export const JOB_KEYS = {

@@ -3,7 +3,6 @@ import {
   usePluginAction,
   usePluginData,
   type PluginPageProps,
-  type PluginSettingsPageProps,
   type PluginWidgetProps,
 } from "@paperclipai/plugin-sdk/ui";
 
@@ -773,76 +772,8 @@ function UsagePill({ percent }: { percent: number }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Settings Page
-// ---------------------------------------------------------------------------
-
-export function AgentUsageSettingsPage(_props: PluginSettingsPageProps) {
-  const { data: snapshot } = usePluginData<ProviderSnapshot | null>(
-    "latest-quota",
-    {}
-  );
-
-  const statusColor = snapshot?.ok
-    ? t.ok
-    : snapshot?.error
-      ? t.destructive
-      : t.mutedFg;
-
-  const statusText = snapshot?.ok
-    ? `Connected — last fetch ${formatAge(snapshot.fetchedAt)}`
-    : snapshot?.error
-      ? snapshot.error
-      : "Not yet polled";
-
-  return (
-    <div style={base.container}>
-      <h3 style={base.heading}>Agent Usage Status</h3>
-      <p style={{ fontSize: "12px", color: t.mutedFg, marginBottom: "12px", marginTop: 0 }}>
-        OAuth credentials are auto-detected from your local Claude installation.
-      </p>
-
-      <div
-        style={{
-          padding: "10px 12px",
-          background: t.card,
-          border: `1px solid ${t.border}`,
-          borderRadius: "var(--radius, 0)",
-          fontSize: "12px",
-          display: "grid",
-          gap: "6px",
-        }}
-      >
-        <Row label="Status">
-          <span style={{ color: statusColor, fontWeight: 500 }}>{statusText}</span>
-        </Row>
-        <Row label="Provider">
-          <span style={{ color: t.fg }}>{snapshot?.provider ?? "—"}</span>
-        </Row>
-        <Row label="Account">
-          <span style={{ color: t.fg }}>{snapshot?.account ?? "—"}</span>
-        </Row>
-        <Row label="Token source">
-          <span style={{ color: t.fg }}>{snapshot?.source ?? "—"}</span>
-        </Row>
-      </div>
-    </div>
-  );
-}
-
-function Row({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={{ display: "flex", gap: "8px", alignItems: "baseline" }}>
-      <span style={{ color: t.mutedFg, minWidth: "96px", flexShrink: 0 }}>
-        {label}
-      </span>
-      {children}
-    </div>
-  );
-}
+// Settings editing lives on the host's auto-generated config form now (see
+// CHANGELOG) — this file no longer declares a custom settingsPage slot,
+// since doing so suppressed that form entirely, including its secret-picker
+// widget for claudeOAuthTokenRef. Status/account/source are already shown
+// on the main page above.
