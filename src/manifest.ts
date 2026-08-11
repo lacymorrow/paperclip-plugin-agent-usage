@@ -32,6 +32,7 @@ const manifest: PaperclipPluginManifestV1 = {
     "ui.dashboardWidget.register",
     "ui.page.register",
     "instance.settings.register",
+    "secrets.read-ref",
   ],
   entrypoints: {
     worker: "./dist/worker.js",
@@ -54,6 +55,20 @@ const manifest: PaperclipPluginManifestV1 = {
           enum: ["claude"],
         },
         default: DEFAULT_CONFIG.providers,
+      },
+      claudeOAuthTokenRef: {
+        // A secret-ref field's saved value is either a raw string (typed or
+        // pasted directly — the host converts it to a stored secret on
+        // save) or a structured { type: "secret_ref", secretId, version }
+        // object (bound to an existing/newly-created company secret via the
+        // picker). Declaring only "string" here rejects the second shape
+        // with "must be string" the moment an operator uses the picker
+        // instead of the raw-paste fallback.
+        type: ["string", "object"],
+        format: "secret-ref",
+        title: "Claude OAuth Token",
+        description:
+          "A Claude Code OAuth token (generate one with `claude setup-token`), stored as a Paperclip secret. Checked first, before any credentials file or CLAUDE_CODE_OAUTH_TOKEN environment variable — the only reliable option when Paperclip runs the plugin worker in its own sandboxed process without the host's environment.",
       },
     },
   },
@@ -101,12 +116,6 @@ const manifest: PaperclipPluginManifestV1 = {
         displayName: "Agent Usage",
         exportName: EXPORT_NAMES.page,
         routePath: PAGE_ROUTE,
-      },
-      {
-        type: "settingsPage",
-        id: SLOT_IDS.settingsPage,
-        displayName: "Agent Usage Settings",
-        exportName: EXPORT_NAMES.settingsPage,
       },
       {
         type: "dashboardWidget",
