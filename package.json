@@ -26,12 +26,13 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types 'src/**/*.test.ts'",
     "dev": "node ./scripts/build.mjs --watch",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "release": "shipx",
     "release:beta": "shipx --beta"
   },
   "dependencies": {
-    "@paperclipai/plugin-sdk": "latest"
+    "@paperclipai/plugin-sdk": "2026.722.0"
   },
   "devDependencies": {
     "@lacymorrow/shipx": "^0.1.0",

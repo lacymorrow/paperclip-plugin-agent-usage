@@ -5,7 +5,7 @@
     "": {
       "name": "paperclip-plugin-agent-usage",
       "dependencies": {
-        "@paperclipai/plugin-sdk": "latest",
+        "@paperclipai/plugin-sdk": "2026.722.0",
       },
       "devDependencies": {
         "@lacymorrow/shipx": "^0.1.0",
@@ -81,9 +81,9 @@
 
     "@lacymorrow/shipx": ["@lacymorrow/shipx@0.1.0", "", { "dependencies": { "@clack/prompts": "^1.0.0", "picocolors": "^1.1.1" }, "bin": { "shipx": "dist/cli.js" } }, "sha512-x2wYyL5Fe/3Jxj8qaWqrhQ0HszwMVcsFdJ575UIHy1Uz07jkuPH7VduBtZoRXp7IC9sNJ0gY83e8UpX9iJ5yDw=="],
 
-    "@paperclipai/plugin-sdk": ["@paperclipai/plugin-sdk@2026.428.0", "", { "dependencies": { "@paperclipai/shared": "2026.428.0", "zod": "^3.24.2" }, "peerDependencies": { "react": ">=18" }, "bin": { "paperclip-plugin-dev-server": "dist/dev-cli.js" } }, "sha512-FcpV5zmSCz6Kkp+JfSmHNtcmN6NJyMxCv3ILwj1/yesRa4xP+mEmJrMnkXC9PLeVeIoEub7BlmVJ9UWzig2JKA=="],
+    "@paperclipai/plugin-sdk": ["@paperclipai/plugin-sdk@2026.722.0", "", { "dependencies": { "@paperclipai/shared": "2026.722.0", "zod": "^3.24.2" }, "peerDependencies": { "react": ">=18" }, "bin": { "paperclip-plugin-dev-server": "dist/dev-cli.js" } }, "sha512-2rMJCBo8ZAouuMsapdaY4/l+oHmrXKHW/k/HfPOLCxFng7+g04c5JhoFq+/ptGfNcW3kXzs34y7brviDCml06Q=="],
 
-    "@paperclipai/shared": ["@paperclipai/shared@2026.428.0", "", { "dependencies": { "zod": "^3.24.2" } }, "sha512-b4irrk/b+aGafkDgURVZJ/uGkyL1ryXy85RUv6cr1X+hg4581CejIiZ4QDMNxCGtRzfyKKXIecSDaq8Yqx4gKw=="],
+    "@paperclipai/shared": ["@paperclipai/shared@2026.722.0", "", { "dependencies": { "zod": "^3.24.2" } }, "sha512-JciI6EbtNwHSeoyN5ZkshwqpyfIluyO46JHp8I7pPCvpJ7Uv7MSZEBs3lKXdXLadFEN6qzfwNmf39xjIFC8isA=="],
 
     "@types/node": ["@types/node@22.19.17", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-wGdMcf+vPYM6jikpS/qhg6WiqSV/OhG+jeeHT/KlVqxYfD40iYJf9/AE1uQxVWFvU7MipKRkRv8NSHiCGgPr8Q=="],
 
