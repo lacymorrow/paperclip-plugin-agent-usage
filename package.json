@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@lacymorrow/shipx": "^0.1.0",
-    "@types/node": "^25.8.0",
+    "@types/node": "^26.1.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "esbuild": "^0.28.0",
