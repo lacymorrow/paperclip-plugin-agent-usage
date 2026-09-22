@@ -22,6 +22,7 @@ import {
   friendlyErrorMessage,
   parseAnthropicResponse,
   parseClaudeCliUsageText,
+  selectInstanceCompanyId,
 } from "./parsing.js";
 
 const execFileAsync = promisify(execFile);
@@ -212,14 +213,37 @@ async function fetchClaudeCliQuota(timeoutMs = 20_000): Promise<QuotaWindow[]> {
 // are lost. Failures don't poison the chain.
 let pollChain: Promise<unknown> = Promise.resolve();
 
-function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
-  const next = pollChain.then(() => runPollAndStore(ctx));
+// `ctx.config.get()` requires an explicit companyId outside a host-scoped
+// invocation (agent tool call, `ctx.actions` handler). `PluginJobContext`
+// (the scheduled poll job) carries no companyId, so the job path must
+// resolve one itself before calling `ctx.config.get(companyId)`.
+// `selectInstanceCompanyId` (parsing.ts) is where the "only safe for a
+// single-company instance" decision lives and is unit-tested; this just
+// fetches the visible companies and logs when the job has to skip.
+async function resolveInstanceCompanyId(ctx: PluginContext): Promise<string | undefined> {
+  const companies = await ctx.companies.list({ limit: 2 });
+  const selection = selectInstanceCompanyId(companies.map((company) => company.id));
+  if (selection.skipReason === "no_companies") {
+    ctx.logger.warn("Scheduled usage poll skipped: no companies visible to this plugin instance");
+    return undefined;
+  }
+  if (selection.skipReason === "multiple_companies") {
+    ctx.logger.warn(
+      "Scheduled usage poll skipped: multiple companies are visible to this plugin instance, and the shared usage snapshot cannot be attributed to one company's config",
+    );
+    return undefined;
+  }
+  return selection.companyId;
+}
+
+function pollAndStore(ctx: PluginContext, companyId?: string): Promise<ProviderSnapshot> {
+  const next = pollChain.then(() => runPollAndStore(ctx, companyId));
   pollChain = next.catch(() => undefined);
   return next;
 }
 
-async function runPollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
-  const config = (await ctx.config.get()) as PluginConfig;
+async function runPollAndStore(ctx: PluginContext, companyId?: string): Promise<ProviderSnapshot> {
+  const config = (await ctx.config.get(companyId)) as PluginConfig;
   const enabledProviders = config.providers ?? DEFAULT_CONFIG.providers;
   const account = await readLocalClaudeAccount();
 
@@ -310,8 +334,8 @@ async function runPollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
 // Tool handlers treat a snapshot as stale when it's older than the configured
 // poll interval. Floored at 5 minutes so an aggressive `pollIntervalMinutes: 1`
 // doesn't burn CLI invocations on every tool call.
-async function staleThresholdMs(ctx: PluginContext): Promise<number> {
-  const config = (await ctx.config.get()) as PluginConfig;
+async function staleThresholdMs(ctx: PluginContext, companyId?: string): Promise<number> {
+  const config = (await ctx.config.get(companyId)) as PluginConfig;
   const intervalMinutes = config.pollIntervalMinutes ?? DEFAULT_CONFIG.pollIntervalMinutes;
   return Math.max(intervalMinutes, 5) * 60_000;
 }
@@ -368,7 +392,10 @@ const plugin: PaperclipPlugin = definePlugin({
     });
 
     ctx.jobs.register(JOB_KEYS.pollUsage, async () => {
-      const jobConfig = (await ctx.config.get()) as PluginConfig;
+      const companyId = await resolveInstanceCompanyId(ctx);
+      if (!companyId) return;
+
+      const jobConfig = (await ctx.config.get(companyId)) as PluginConfig;
       const intervalMinutes = jobConfig.pollIntervalMinutes ?? DEFAULT_CONFIG.pollIntervalMinutes;
 
       const lastSnapshot = (await ctx.state.get({
@@ -385,7 +412,7 @@ const plugin: PaperclipPlugin = definePlugin({
       }
 
       ctx.logger.info("Running scheduled usage poll");
-      await pollAndStore(ctx);
+      await pollAndStore(ctx, companyId);
     });
 
     ctx.tools.register(
