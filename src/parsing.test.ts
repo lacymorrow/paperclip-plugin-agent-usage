@@ -28,6 +28,7 @@ import {
   parseAnthropicResponse,
   parseClaudeCliUsageText,
   percentFromLine,
+  selectInstanceCompanyId,
   stripAnsi,
   stripBackspaces,
   toPercent,
@@ -492,4 +493,22 @@ test("extractAccountEmail: null for missing, empty, or malformed shapes", () => 
   assert.equal(extractAccountEmail({ oauthAccount: { emailAddress: "" } }), null);
   assert.equal(extractAccountEmail({ oauthAccount: { emailAddress: "   " } }), null);
   assert.equal(extractAccountEmail({ oauthAccount: { emailAddress: 42 } }), null);
+});
+
+// ---------------------------------------------------------------------------
+// selectInstanceCompanyId
+// ---------------------------------------------------------------------------
+
+test("selectInstanceCompanyId: resolves the single visible company", () => {
+  assert.deepEqual(selectInstanceCompanyId(["company-1"]), { companyId: "company-1" });
+});
+
+test("selectInstanceCompanyId: no companies skips rather than guessing", () => {
+  assert.deepEqual(selectInstanceCompanyId([]), { skipReason: "no_companies" });
+});
+
+test("selectInstanceCompanyId: multiple companies skips rather than guessing", () => {
+  assert.deepEqual(selectInstanceCompanyId(["company-1", "company-2"]), {
+    skipReason: "multiple_companies",
+  });
 });

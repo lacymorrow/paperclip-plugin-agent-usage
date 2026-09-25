@@ -260,3 +260,20 @@ export function formatTimeDelta(isoDate: string, nowMs: number = Date.now()): st
   if (hours < 24) return `${hours}h`;
   return `${Math.round(hours / 24)}d`;
 }
+
+export type InstanceCompanySelection =
+  | { companyId: string; skipReason?: undefined }
+  | { companyId?: undefined; skipReason: "no_companies" | "multiple_companies" };
+
+// Scheduled-job config resolution: `ctx.config.get()` requires an explicit
+// companyId outside a host-scoped invocation (agent tool call, `ctx.actions`
+// handler), but the `poll-usage` job context carries none. This plugin's
+// state is instance-scoped (one shared snapshot for the whole install), so
+// picking a company to drive that snapshot's config is only sound when
+// exactly one company is visible — with more than one we can't attribute the
+// shared snapshot to any single company's config, so we skip rather than guess.
+export function selectInstanceCompanyId(companyIds: string[]): InstanceCompanySelection {
+  if (companyIds.length === 0) return { skipReason: "no_companies" };
+  if (companyIds.length > 1) return { skipReason: "multiple_companies" };
+  return { companyId: companyIds[0] };
+}
