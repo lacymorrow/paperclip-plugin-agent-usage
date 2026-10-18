@@ -210,6 +210,18 @@ async function fetchClaudeCliQuota(timeoutMs = 20_000): Promise<QuotaWindow[]> {
 // concurrently. Each caller queues onto a shared promise chain and runs its
 // own poll + append after the previous call finishes, so no history entries
 // are lost. Failures don't poison the chain.
+// Scheduled jobs run without a company, and newer Paperclip hosts refuse
+// `config.get` there ("company context is required"). Fall back to defaults
+// so polling keeps running instead of failing every interval.
+async function readConfig(ctx: PluginContext): Promise<PluginConfig> {
+  try {
+    return ((await ctx.config.get()) as PluginConfig | null) ?? {};
+  } catch (err) {
+    ctx.logger.warn("config.get unavailable, using defaults", { error: String(err) });
+    return {};
+  }
+}
+
 let pollChain: Promise<unknown> = Promise.resolve();
 
 function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
@@ -219,7 +231,7 @@ function pollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
 }
 
 async function runPollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
-  const config = (await ctx.config.get()) as PluginConfig;
+  const config = await readConfig(ctx);
   const enabledProviders = config.providers ?? DEFAULT_CONFIG.providers;
   const account = await readLocalClaudeAccount();
 
@@ -311,7 +323,7 @@ async function runPollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
 // poll interval. Floored at 5 minutes so an aggressive `pollIntervalMinutes: 1`
 // doesn't burn CLI invocations on every tool call.
 async function staleThresholdMs(ctx: PluginContext): Promise<number> {
-  const config = (await ctx.config.get()) as PluginConfig;
+  const config = await readConfig(ctx);
   const intervalMinutes = config.pollIntervalMinutes ?? DEFAULT_CONFIG.pollIntervalMinutes;
   return Math.max(intervalMinutes, 5) * 60_000;
 }
@@ -368,7 +380,7 @@ const plugin: PaperclipPlugin = definePlugin({
     });
 
     ctx.jobs.register(JOB_KEYS.pollUsage, async () => {
-      const jobConfig = (await ctx.config.get()) as PluginConfig;
+      const jobConfig = await readConfig(ctx);
       const intervalMinutes = jobConfig.pollIntervalMinutes ?? DEFAULT_CONFIG.pollIntervalMinutes;
 
       const lastSnapshot = (await ctx.state.get({
