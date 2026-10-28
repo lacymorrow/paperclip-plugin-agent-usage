@@ -39,7 +39,19 @@ jobs:
 
           # --prefer-online or the runner's packument cache can replay a
           # pre-publish view and we try to publish a version that is already up.
-          published=$(npm view --prefer-online "$name" versions --json 2>/dev/null || echo '[]')
+          # Only a real 404 means "never published". Any other npm failure is a
+          # registry or network problem, and treating that as "not published"
+          # would send an already-released version back to `npm publish`.
+          if published=$(npm view --prefer-online "$name" versions --json 2>/tmp/npm-view.err); then
+            :
+          elif grep -q "E404" /tmp/npm-view.err; then
+            published='[]'
+          else
+            cat /tmp/npm-view.err >&2
+            echo "Could not read $name from the registry; refusing to guess." >&2
+            exit 1
+          fi
+
           if node -e "process.exit(JSON.parse(process.argv[1]).includes(process.argv[2]) ? 0 : 1)" "$published" "$version"; then
             echo "unpublished=false" >> "$GITHUB_OUTPUT"
             echo "::notice::$name@$version is already on npm. Nothing to release."
@@ -73,10 +85,17 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
 
-      # Trusted publishing (OIDC) needs npm >= 11.5.1.
+      # Trusted publishing (OIDC) needs npm >= 11.5.1. npm >= 11.16 also blocks
+      # install scripts by default, which leaves esbuild's postinstall unrun;
+      # measured 2026-10-28, the build resolves its platform binary from the
+      # optional dependency anyway and typecheck, all 60 tests and all three
+      # bundles still pass.
       - run: npm install -g npm@latest
 
-      - run: npm install
+      # A release builds from the lockfile. `npm install` may silently resolve a
+      # newer tree than the one CI tested on the PR, and `@paperclipai/plugin-sdk`
+      # is a `latest` range.
+      - run: npm ci
 
       - name: Guard against PLUGIN_VERSION drift
         run: |
@@ -113,8 +132,11 @@ jobs:
           VERSION: ${{ needs.check.outputs.version }}
         run: |
           set -euo pipefail
-          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-            echo "Tag v$VERSION already exists locally; leaving it alone."
+          # Ask the remote, not the checkout: actions/checkout fetches no tags,
+          # so `git rev-parse v$VERSION` misses tags that do exist upstream and
+          # the push below would then fail on an already-published release.
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists on origin; leaving it alone."
           else
             git tag "v$VERSION"
             git push origin "v$VERSION"
