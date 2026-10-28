@@ -37,7 +37,9 @@ jobs:
           version=$(node -p "require('./package.json').version")
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-          published=$(npm view "$name" versions --json 2>/dev/null || echo '[]')
+          # --prefer-online or the runner's packument cache can replay a
+          # pre-publish view and we try to publish a version that is already up.
+          published=$(npm view --prefer-online "$name" versions --json 2>/dev/null || echo '[]')
           if node -e "process.exit(JSON.parse(process.argv[1]).includes(process.argv[2]) ? 0 : 1)" "$published" "$version"; then
             echo "unpublished=false" >> "$GITHUB_OUTPUT"
             echo "::notice::$name@$version is already on npm. Nothing to release."
