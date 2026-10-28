@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-28
+
+0.1.4 was tagged but never published to npm, so this release carries that tag's
+changes too. Upgrading from 0.1.3 gets both.
+
 ### Added
 
 - Signed-in account email shown in the dashboard widget, usage page, settings page, and agent usage summary, so multi-account users can tell which account the quota belongs to (LAC-3028).
-
 - Centered README hero, logo (pink quota-bars on rounded square), 5 modern badges.
 - `.github/` community files: FUNDING, dependabot, ISSUE_TEMPLATE, PR template, SECURITY, CONTRIBUTING.
 - CI typecheck + build workflow on Node 18/20/22.
@@ -26,10 +30,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The scheduled poll job died on every cycle. Scheduled jobs run with no
+  company and current Paperclip hosts refuse an unscoped `config.get` there, so
+  every poll since July failed and the widget served a stale snapshot. The job
+  now falls back to defaults instead of throwing ([#74]).
+- The scheduled poll job ignored operator config. After [#74] it fell back to
+  `DEFAULT_CONFIG` every cycle, so `pollIntervalMinutes` and `providers` were
+  honored on tool-driven polls and silently dropped on scheduled ones. The job
+  now resolves the company through `companies.list` and reads its real config.
+  That also stops the host logging an ERROR per refused read; the local
+  instance had 3954 of them ([#77]).
 - `toPercent` was multiplying `utilization` by 100, assuming a 0..1 fraction. The Anthropic OAuth usage API actually returns it as a whole percentage already, so any real (non-zero) usage was clamping straight to 100%.
 
-## [0.1.4] and earlier
+## [0.1.3] and earlier
 
-For pre-0.1.4 history, see [`git log`](https://github.com/lacymorrow/paperclip-plugin-agent-usage/commits/main).
+For 0.1.3 and earlier, see [`git log`](https://github.com/lacymorrow/paperclip-plugin-agent-usage/commits/main).
 
-[Unreleased]: https://github.com/lacymorrow/paperclip-plugin-agent-usage/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/lacymorrow/paperclip-plugin-agent-usage/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/lacymorrow/paperclip-plugin-agent-usage/compare/v0.1.3...v0.1.5
+[#74]: https://github.com/lacymorrow/paperclip-plugin-agent-usage/pull/74
+[#77]: https://github.com/lacymorrow/paperclip-plugin-agent-usage/pull/77

@@ -34,12 +34,27 @@ This package currently supports Claude. To add another:
 
 ## Releasing
 
-This package uses [shipx](https://github.com/lacymorrow/shipx) for releases:
+Releasing is the version bump. CI publishes to npm whenever the `version` in
+`package.json` lands on `main` and is not already on the registry, so there is
+no publish command to run and no step to forget.
 
-```bash
-npm run release           # interactive
-npm run release:beta      # pre-release with --tag beta
-```
+1. Open a PR that raises `version` in `package.json` and `PLUGIN_VERSION` in
+   `src/constants.ts` to the same value, and move the `[Unreleased]` changelog
+   entries under the new version heading.
+2. Merge it.
+
+`.github/workflows/release.yml` then runs typecheck, tests and the build,
+publishes with npm provenance, tags `v<version>` and cuts a GitHub release. If
+the version in `package.json` is already published the workflow exits as a
+no-op, which is what every other merge does.
+
+The publish step runs in the `npm-publish` GitHub environment, which holds the
+npm credential. While that environment has a required reviewer the job waits for
+a click instead of publishing; an unattended release needs the reviewer removed.
+
+[shipx](https://github.com/lacymorrow/shipx) can do step 1 for you
+(`npm run release`); it bumps both files and writes the commit, and its publish
+and GitHub-release steps are off so it cannot race CI.
 
 ## Code of conduct
 
