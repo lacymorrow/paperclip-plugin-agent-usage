@@ -53,6 +53,13 @@ jobs:
     needs: check
     if: needs.check.outputs.unpublished == 'true'
     runs-on: ubuntu-latest
+    # The `npm-publish` environment is where the publish credential lives,
+    # either an NPM_TOKEN secret or the trusted-publisher registration on
+    # npmjs.com. It also carries a required reviewer while LAC-6116 holds the
+    # 0.1.5 publish approval, so until that clears this job parks on a review
+    # request instead of publishing. Drop the reviewer once 0.1.5 is out or
+    # every release needs a click, which is the thing this workflow exists to
+    # remove.
     environment: npm-publish
     permissions:
       contents: write # push the tag, create the GitHub release
