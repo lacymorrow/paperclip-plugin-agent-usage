@@ -1,0 +1,117 @@
+name: Release
+
+# Releasing is the version bump. Merge a PR that raises `version` in
+# package.json and this publishes it; merge anything else and this is a no-op.
+# npm is the gate, not git tags, because npm is what operators install from.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Is the repo version unpublished?
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      unpublished: ${{ steps.check.outputs.unpublished }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - id: check
+        name: Compare package.json against the registry
+        run: |
+          set -euo pipefail
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          published=$(npm view "$name" versions --json 2>/dev/null || echo '[]')
+          if node -e "process.exit(JSON.parse(process.argv[1]).includes(process.argv[2]) ? 0 : 1)" "$published" "$version"; then
+            echo "unpublished=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$name@$version is already on npm. Nothing to release."
+          else
+            echo "unpublished=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$name@$version is not on npm. Releasing."
+          fi
+
+  publish:
+    name: Publish v${{ needs.check.outputs.version }}
+    needs: check
+    if: needs.check.outputs.unpublished == 'true'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: write # push the tag, create the GitHub release
+      id-token: write # npm provenance / trusted publishing
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing (OIDC) needs npm >= 11.5.1.
+      - run: npm install -g npm@latest
+
+      - run: npm install
+
+      - name: Guard against PLUGIN_VERSION drift
+        run: |
+          set -euo pipefail
+          pkg=$(node -p "require('./package.json').version")
+          src=$(grep -oE 'PLUGIN_VERSION = "[^"]+"' src/constants.ts | grep -oE '[0-9][^"]*')
+          if [ "$pkg" != "$src" ]; then
+            echo "package.json is $pkg but src/constants.ts PLUGIN_VERSION is $src" >&2
+            exit 1
+          fi
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run build
+
+      - name: Verify plugin manifest bundle
+        run: |
+          test -f dist/manifest.js
+          test -f dist/worker.js
+          test -f dist/ui/index.js
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          # Empty when the package uses npm trusted publishing; the OIDC
+          # token from `id-token: write` authenticates instead.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists locally; leaving it alone."
+          else
+            git tag "v$VERSION"
+            git push origin "v$VERSION"
+          fi
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists."
+          else
+            gh release create "v$VERSION" --title "v$VERSION" --generate-notes
+          fi

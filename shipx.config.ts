@@ -1,9 +1,12 @@
 import type { ShipConfig } from "@lacymorrow/shipx";
 
 export default {
+  // Bump only. `.github/workflows/release.yml` publishes to npm and cuts the
+  // GitHub release when a version bump lands on main, so shipx must not also
+  // do it from a laptop.
   steps: {
-    npm: true,
-    githubRelease: true,
+    npm: false,
+    githubRelease: false,
     homebrew: false,
   },
   git: {
