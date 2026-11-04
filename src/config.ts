@@ -24,9 +24,12 @@
 // govern it, and picking the first company would be wrong the moment a second
 // one exists.
 
+import type { EnvSecretRefBinding } from "@paperclipai/plugin-sdk";
+
 export interface PluginConfig {
   pollIntervalMinutes?: number;
   providers?: string[];
+  claudeOAuthTokenRef?: string | EnvSecretRefBinding | null;
 }
 
 /** The slice of `PluginContext` this module needs. */
