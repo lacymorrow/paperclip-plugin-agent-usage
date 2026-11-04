@@ -100,7 +100,7 @@ configured there. Set `claudeOAuthTokenRef` in this plugin's settings
 instead — it uses Paperclip's own secret store, resolved by the host at
 call time, and is the only mechanism that reaches the worker process under
 that sandboxing model. Generate a token with `claude setup-token`, then
-paste it into the secret picker for this field.
+select it in the secret picker for this field. Use the picker: pasted text is not resolved (the host refuses a bare string), and the plugin reports it in its health panel and rejects it when you save, rather than silently falling back.
 
 ## Agent tools
 

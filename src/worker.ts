@@ -13,7 +13,7 @@ import {
   type ToolRunContext,
 } from "@paperclipai/plugin-sdk";
 import { DEFAULT_CONFIG, JOB_KEYS, STATE_KEYS, TOOL_NAMES } from "./constants.js";
-import { readPluginConfig } from "./config.js";
+import { readPluginConfig, type PluginConfig } from "./config.js";
 import {
   TOKEN_REF_FAILURE_MESSAGES,
   isRawStringRef,
