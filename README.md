@@ -76,9 +76,7 @@ Bars shift green → purple → red as usage approaches limits, so you spot trou
 
 ### Plugin settings
 
-Auto-detects your Claude OAuth credentials and shows current connection status.
-
-![Plugin settings](screenshots/agent-usage-settings-connected.png)
+Configuration lives on Paperclip's own generated settings form (Instance Settings → Plugins → Agent Usage Tracker), including a secret picker for the Claude OAuth token — this plugin doesn't ship a custom settings page, so that form is never hidden. Connection status (provider, account, token source) is shown on the main **Agent Usage** page and the dashboard widget instead.
 
 ## Configuration
 
@@ -86,8 +84,23 @@ Auto-detects your Claude OAuth credentials and shows current connection status.
 |---|---|---|
 | `pollIntervalMinutes` | How often to refresh usage data | `15` |
 | `providers` | Which providers to track | `["claude"]` |
+| `claudeOAuthTokenRef` | A Claude Code OAuth token (`claude setup-token`), stored as a Paperclip secret. Checked first. | *(unset)* |
 
-OAuth credentials are auto-detected from your local Claude install (`~/.claude` or macOS Keychain). Token lifecycle is managed by Paperclip.
+OAuth credentials are auto-detected in this order: the `claudeOAuthTokenRef`
+secret, the `CLAUDE_CODE_OAUTH_TOKEN` environment variable, then your local
+Claude install (`~/.claude` or macOS Keychain). Token lifecycle is managed by
+Paperclip.
+
+**If Paperclip runs the plugin worker in its own sandboxed process** (the
+default when Paperclip itself manages the plugin, not just a bare Node
+process) — the host does not pass its own environment through to plugin
+workers, by design, so `CLAUDE_CODE_OAUTH_TOKEN` being set on the Paperclip
+host/container itself is invisible to the plugin no matter how it's
+configured there. Set `claudeOAuthTokenRef` in this plugin's settings
+instead — it uses Paperclip's own secret store, resolved by the host at
+call time, and is the only mechanism that reaches the worker process under
+that sandboxing model. Generate a token with `claude setup-token`, then
+paste it into the secret picker for this field.
 
 ## Agent tools
 

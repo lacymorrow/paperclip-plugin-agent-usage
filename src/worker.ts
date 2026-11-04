@@ -15,6 +15,12 @@ import {
 import { DEFAULT_CONFIG, JOB_KEYS, STATE_KEYS, TOOL_NAMES } from "./constants.js";
 import { readPluginConfig } from "./config.js";
 import {
+  TOKEN_REF_FAILURE_MESSAGES,
+  isRawStringRef,
+  resolveTokenRef,
+  type TokenRefFailure,
+} from "./token-ref.js";
+import {
   type AnthropicUsageResponse,
   type QuotaWindow,
   cleanTerminalText,
@@ -79,7 +85,41 @@ function claudeConfigDir(): string {
   return path.join(os.homedir(), ".claude");
 }
 
-async function readLocalClaudeToken(): Promise<string | null> {
+// Last secret-ref failure seen by a poll, reported by onHealth. Holds a failure
+// kind only, never the ref or any resolved value.
+let tokenRefFailure: TokenRefFailure | null = null;
+
+async function readLocalClaudeToken(
+  secrets: Pick<PluginContext, "secrets">["secrets"],
+  logger: Pick<PluginContext, "logger">["logger"],
+  tokenRef: PluginConfig["claudeOAuthTokenRef"],
+): Promise<string | null> {
+  // Checked first: an operator-configured secret ref (Claude OAuth Token
+  // setting). Paperclip does not pass the host environment through to plugin
+  // workers, so CLAUDE_CODE_OAUTH_TOKEN set on the host is invisible here and
+  // resolving through ctx.secrets is the supported way to receive a token.
+  // Order stays: ref, then env var, then credentials file / Keychain.
+  const result = await resolveTokenRef(secrets, tokenRef);
+  if (result.status === "ok") {
+    tokenRefFailure = null;
+    return result.token;
+  }
+  if (result.status === "failed") {
+    tokenRefFailure = result.failure;
+    logger.warn("Claude OAuth token ref not used, falling back", {
+      failure: result.failure,
+    });
+  } else {
+    tokenRefFailure = null;
+  }
+
+  // The env var itself: a fallback for non-sandboxed usage (local development),
+  // where nothing strips the ambient environment.
+  const envToken = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+  if (typeof envToken === "string" && envToken.trim().length > 0) {
+    return envToken.trim();
+  }
+
   const configDir = claudeConfigDir();
   for (const filename of [".credentials.json", "credentials.json"]) {
     try {
@@ -235,7 +275,7 @@ async function runPollAndStore(ctx: PluginContext): Promise<ProviderSnapshot> {
 
   let snapshot: ProviderSnapshot;
   try {
-    const token = await readLocalClaudeToken();
+    const token = await readLocalClaudeToken(ctx.secrets, ctx.logger, config.claudeOAuthTokenRef);
     let windows: QuotaWindow[];
     let source: string;
 
@@ -460,7 +500,21 @@ const plugin: PaperclipPlugin = definePlugin({
   },
 
   async onHealth(): Promise<PluginHealthDiagnostics> {
+    if (tokenRefFailure) {
+      return {
+        status: "degraded",
+        message: TOKEN_REF_FAILURE_MESSAGES[tokenRefFailure],
+        details: { claudeOAuthTokenRef: tokenRefFailure },
+      };
+    }
     return { status: "ok", message: "Agent Usage plugin running" };
+  },
+
+  async onValidateConfig(config) {
+    if (isRawStringRef(config["claudeOAuthTokenRef"])) {
+      return { ok: false, errors: [TOKEN_REF_FAILURE_MESSAGES["raw-string"]] };
+    }
+    return { ok: true };
   },
 });
 
