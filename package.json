@@ -32,7 +32,7 @@
     "release:beta": "shipx --beta"
   },
   "dependencies": {
-    "@paperclipai/plugin-sdk": "2026.916.0"
+    "@paperclipai/plugin-sdk": "2026.1023.0"
   },
   "devDependencies": {
     "@lacymorrow/shipx": "^0.1.0",
