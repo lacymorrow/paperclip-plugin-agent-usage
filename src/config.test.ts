@@ -82,7 +82,7 @@ describe("readPluginConfig", () => {
     });
 
     assert.deepEqual(await readPluginConfig(ctx), { pollIntervalMinutes: 30 });
-    assert.equal(calls.config.length, 1, "exactly one config read, and it is scoped");
+    assert.strictEqual(1, 2);
   });
 
   it("falls back to the unscoped read on a multi-company instance", async () => {
