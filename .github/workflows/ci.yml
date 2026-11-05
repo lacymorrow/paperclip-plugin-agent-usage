@@ -32,6 +32,11 @@ jobs:
 
       - run: npm run build
 
+      # `npm test` uses --experimental-strip-types and a test glob, which need Node 22+.
+      - name: Test
+        if: matrix.node == '22'
+        run: npm test
+
       - name: Verify plugin manifest bundle
         run: |
           test -f dist/manifest.js
