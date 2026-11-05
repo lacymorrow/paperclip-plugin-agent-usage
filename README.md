@@ -60,6 +60,16 @@ Content-Type: application/json
 { "packageName": "/path/to/paperclip-plugin-agent-usage", "isLocalPath": true }
 ```
 
+### Installing from a git ref
+
+If you install from a git ref (for example `github:lacymorrow/paperclip-plugin-agent-usage`) instead of the npm registry, the package builds itself through its `prepare` script (`npm run build`). npm 11.20 and later warn that this script isn't covered by `allowScripts`. The build still runs today. If a future npm version blocks it, approve the script once:
+
+```bash
+npm install-scripts approve paperclip-plugin-agent-usage
+```
+
+Installs from the npm registry ship a prebuilt `dist/` and aren't affected.
+
 ## Screenshots
 
 ### Detailed usage page
@@ -120,6 +130,8 @@ npm run dev          # esbuild watch
 npm run build        # bundle to dist/
 npm run typecheck
 ```
+
+Cloning the repo and running `npm install` also runs `prepare` (the build). See [Installing from a git ref](#installing-from-a-git-ref) if npm 11.20+ warns about `allowScripts`.
 
 Releases are managed by [shipx](https://github.com/lacymorrow/shipx):
 
