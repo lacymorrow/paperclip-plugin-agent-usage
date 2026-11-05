@@ -143,7 +143,7 @@ jobs:
           # the push below would then fail on an already-published release.
           # Tag the commit that set this version, not HEAD: a healing run can
           # fire several commits after the bump.
-          sha=$(git log -S"\"version\": \"$VERSION\"" --reverse --format=%H -- package.json | head -n 1)
+          sha=$(git log -S"\"version\": \"$VERSION\"" --reverse --format=%H -- package.json | sed -n 1p)
           if [ -z "$sha" ]; then
             echo "::warning::No commit found that set version $VERSION; tagging $GITHUB_SHA"
             sha=$GITHUB_SHA
