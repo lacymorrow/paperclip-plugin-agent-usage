@@ -23,9 +23,9 @@ jobs:
       version: ${{ steps.check.outputs.version }}
       unpublished: ${{ steps.check.outputs.unpublished }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: "24"
 
@@ -38,27 +38,13 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
           # --prefer-online or the runner's packument cache can replay a
-          # pre-publish view and we try to publish a version that is already up.
-          # Only a real 404 means "never published". Any other npm failure is a
-          # registry or network problem, and treating that as "not published"
-          # would send an already-released version back to `npm publish`.
-          if published=$(npm view --prefer-online "$name" versions --json 2>/tmp/npm-view.err); then
-            :
-          elif grep -q "E404" /tmp/npm-view.err; then
-            published='[]'
-          else
-            cat /tmp/npm-view.err >&2
-            echo "Could not read $name from the registry; refusing to guess." >&2
-            exit 1
-          fi
-
-          if node -e "process.exit(JSON.parse(process.argv[1]).includes(process.argv[2]) ? 0 : 1)" "$published" "$version"; then
-            echo "unpublished=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::$name@$version is already on npm. Nothing to release."
-          else
-            echo "unpublished=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::$name@$version is not on npm. Releasing."
-          fi
+          # pre-publish view. The decision logic lives in
+          # scripts/release-check.mjs so it can be unit tested.
+          code=0
+          npm view --prefer-online "$name" versions --json >/tmp/npm-view.out 2>/tmp/npm-view.err || code=$?
+          result=$(node scripts/release-check.mjs "$name" "$version" "$code" /tmp/npm-view.out /tmp/npm-view.err)
+          echo "$result" >> "$GITHUB_OUTPUT"
+          echo "::notice::$name@$version: $result"
 
   publish:
     name: Publish v${{ needs.check.outputs.version }}
@@ -77,9 +63,9 @@ jobs:
       contents: write # push the tag, create the GitHub release
       id-token: write # npm provenance / trusted publishing
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: "24"
           cache: npm
@@ -87,10 +73,13 @@ jobs:
 
       # Trusted publishing (OIDC) needs npm >= 11.5.1. npm >= 11.16 also blocks
       # install scripts by default, which leaves esbuild's postinstall unrun;
-      # measured 2026-10-28, the build resolves its platform binary from the
-      # optional dependency anyway and typecheck, all 60 tests and all three
-      # bundles still pass.
-      - run: npm install -g npm@latest
+      # measured 2026-10-28 on npm 11, the build resolves its platform binary
+      # from the optional dependency anyway and typecheck, all tests and all
+      # three bundles still pass. Stay on the measured major: `latest` is
+      # already 12. The manifest check below catches a later 11.x default change.
+      - run: npm install -g 'npm@^11.5.1'
+
+      - run: npm -v
 
       # A release builds from the lockfile. `npm install` may silently resolve a
       # newer tree than the one CI tested on the PR, and `@paperclipai/plugin-sdk`
@@ -125,6 +114,21 @@ jobs:
           # Empty when the package uses npm trusted publishing; the OIDC
           # token from `id-token: write` authenticates instead.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Runs whenever the version is on npm (just published, or published by an
+  # earlier run whose tag push failed) and the tag is missing. Idempotent, so a
+  # failed tag push heals on the next push to main or a manual dispatch.
+  tag:
+    name: Tag v${{ needs.check.outputs.version }}
+    needs: [check, publish]
+    if: >-
+      always() && needs.check.result == 'success' &&
+      (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the tag, create the GitHub release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Tag and release
         env:
