@@ -60,7 +60,7 @@ jobs:
     # remove.
     environment: npm-publish
     permissions:
-      contents: write # push the tag, create the GitHub release
+      contents: read
       id-token: write # npm provenance / trusted publishing
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -129,6 +129,8 @@ jobs:
       contents: write # push the tag, create the GitHub release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0 # full history so git log -S can find the bump commit
 
       - name: Tag and release
         env:
@@ -139,14 +141,21 @@ jobs:
           # Ask the remote, not the checkout: actions/checkout fetches no tags,
           # so `git rev-parse v$VERSION` misses tags that do exist upstream and
           # the push below would then fail on an already-published release.
+          # Tag the commit that set this version, not HEAD: a healing run can
+          # fire several commits after the bump.
+          sha=$(git log -S"\"version\": \"$VERSION\"" --reverse --format=%H -- package.json | head -n 1)
+          if [ -z "$sha" ]; then
+            echo "::warning::No commit found that set version $VERSION; tagging $GITHUB_SHA"
+            sha=$GITHUB_SHA
+          fi
           if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
             echo "Tag v$VERSION already exists on origin; leaving it alone."
           else
-            git tag "v$VERSION"
+            git tag "v$VERSION" "$sha"
             git push origin "v$VERSION"
           fi
           if gh release view "v$VERSION" >/dev/null 2>&1; then
             echo "Release v$VERSION already exists."
           else
-            gh release create "v$VERSION" --title "v$VERSION" --generate-notes
+            gh release create "v$VERSION" --title "v$VERSION" --generate-notes --verify-tag
           fi
