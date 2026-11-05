@@ -60,6 +60,26 @@ Content-Type: application/json
 { "packageName": "/path/to/paperclip-plugin-agent-usage", "isLocalPath": true }
 ```
 
+### Installing from a git ref
+
+If you install from a git ref (for example `github:lacymorrow/paperclip-plugin-agent-usage`) instead of the npm registry, the package builds itself through its `prepare` script (`npm run build`). npm 11.20 and later warn that this script isn't covered by `allowScripts`:
+
+```
+npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn install-scripts   paperclip-plugin-agent-usage@0.1.5 (prepare: npm run build)
+```
+
+The build still runs, so the install works. To silence the warning, approve the script after the first install:
+
+```bash
+npm install github:lacymorrow/paperclip-plugin-agent-usage
+npm install-scripts approve --no-allow-scripts-pin paperclip-plugin-agent-usage
+```
+
+Two things to know. `approve` only matches a package that is already installed, so running it on a fresh project exits with `ENOMATCH`. And `--no-allow-scripts-pin` matters if you track a branch: without it npm records the approval against the exact commit it installed, and the warning returns the next time that branch moves.
+
+Installs from the npm registry ship a prebuilt `dist/` and aren't affected.
+
 ## Screenshots
 
 ### Detailed usage page
@@ -120,6 +140,8 @@ npm run dev          # esbuild watch
 npm run build        # bundle to dist/
 npm run typecheck
 ```
+
+Cloning the repo and running `npm install` also runs `prepare` (the build). See [Installing from a git ref](#installing-from-a-git-ref) if npm 11.20+ warns about `allowScripts`.
 
 Releases are managed by [shipx](https://github.com/lacymorrow/shipx):
 
