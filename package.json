@@ -24,7 +24,7 @@
     "build": "node ./scripts/build.mjs",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types 'src/**/*.test.ts'",
+    "test": "node --test --experimental-strip-types 'src/**/*.test.ts' 'scripts/*.test.mjs'",
     "dev": "node ./scripts/build.mjs --watch",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build",
