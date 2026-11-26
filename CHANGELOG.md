@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Usage bars were gray, and the 75–90% bar invisible in dark mode, on Paperclip themes that define `--chart-2`/`--chart-4`/`--chart-5` as grays (in the dark theme `--chart-5` equals `--muted`, the bar track). The bars use the documented green → purple → red colors again, in light and dark themes.
+
 ## [0.1.5] - 2026-10-28
 
 0.1.4 was tagged but never published to npm, so this release carries that tag's

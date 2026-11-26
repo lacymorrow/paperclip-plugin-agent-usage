@@ -52,10 +52,14 @@ const t = {
   secondaryFg: "var(--secondary-foreground)",
   destructive: "var(--destructive)",
   destructiveFg: "var(--destructive-foreground)",
-  // Chart tokens used for the usage bar color ramp
-  ok: "var(--chart-2)",       // teal  < 50%
-  caution: "var(--chart-4)",  // yellow 50–75%
-  warning: "var(--chart-5)",  // orange 75–90%
+  // Usage bar color ramp (green → purple → red, as in the README screenshots).
+  // These are the dark-theme --chart-2/4/5 values the plugin was designed
+  // against, pinned here because current Paperclip themes define --chart-*
+  // as grays, and in the dark theme --chart-5 equals --muted (the bar track),
+  // which made the 75–90% bar invisible.
+  ok: "oklch(69.6% 0.17 162.48)",       // green  < 50%
+  caution: "oklch(62.7% 0.265 303.9)",  // purple 50–75%
+  warning: "oklch(64.5% 0.246 16.439)", // red    75–90%
   // critical: destructive     //  red  ≥ 90%
 };
 
