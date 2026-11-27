@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The `claude /usage` CLI fallback no longer leaves a `claude` process behind when a probe times out. Everything the probe starts is now sent SIGTERM and then SIGKILL on timeout, exit and worker shutdown, and the probe sends Ctrl-C twice to quit cleanly ([#92]).
+
+[#92]: https://github.com/lacymorrow/paperclip-plugin-agent-usage/issues/92
+
 ## [0.1.5] - 2026-10-28
 
 0.1.4 was tagged but never published to npm, so this release carries that tag's
