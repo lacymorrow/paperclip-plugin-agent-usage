@@ -12,6 +12,7 @@ import {
   type ToolResult,
   type ToolRunContext,
 } from "@paperclipai/plugin-sdk";
+import { killActiveProbes, runProbeShell } from "./cli-probe.js";
 import { DEFAULT_CONFIG, JOB_KEYS, STATE_KEYS, TOOL_NAMES } from "./constants.js";
 import { readPluginConfig, type PluginConfig } from "./config.js";
 import {
@@ -195,29 +196,20 @@ function quoteForShell(value: string): string {
 }
 
 async function runClaudeCliCommand(timeoutMs: number): Promise<QuotaWindow[]> {
-  const feed = "(sleep 3; printf '/usage\\r'; sleep 8; printf '\\033'; sleep 1; printf '\\003')";
+  const feed = "(sleep 3; printf '/usage\\r'; sleep 8; printf '\\033'; sleep 1; printf '\\003'; sleep 0.5; printf '\\003')";
   const claudeCommand = "claude --tools \"\"";
   const command = process.platform === "darwin"
     ? `${feed} | script -q /dev/null ${claudeCommand}`
     : `${feed} | script -q -e -f -c ${quoteForShell(claudeCommand)} /dev/null`;
 
   try {
-    let output = "";
-    try {
-      const { stdout, stderr } = await execFileAsync("sh", ["-c", command], {
-        env: createClaudeQuotaEnv(),
-        timeout: timeoutMs,
-        maxBuffer: 8 * 1024 * 1024,
-      });
-      output = `${stdout}${stderr}`;
-    } catch (error) {
-      const stdout = typeof error === "object" && error !== null && "stdout" in error && typeof error.stdout === "string" ? error.stdout : "";
-      const stderr = typeof error === "object" && error !== null && "stderr" in error && typeof error.stderr === "string" ? error.stderr : "";
-      output = `${stdout}${stderr}`;
-      const cleaned = cleanTerminalText(output);
-      if (!cleaned.toLowerCase().includes("current session")) {
-        throw error;
-      }
+    const { stdout, stderr, ok } = await runProbeShell(command, {
+      env: createClaudeQuotaEnv(),
+      timeoutMs,
+    });
+    const output = `${stdout}${stderr}`;
+    if (!ok && !cleanTerminalText(output).toLowerCase().includes("current session")) {
+      throw new Error(`Command failed: sh -c ${command}\n${stderr}`);
     }
 
     return parseClaudeCliUsageText(output);
@@ -497,6 +489,10 @@ const plugin: PaperclipPlugin = definePlugin({
     );
 
     ctx.logger.info("Agent Usage plugin initialized");
+  },
+
+  async onShutdown() {
+    killActiveProbes();
   },
 
   async onHealth(): Promise<PluginHealthDiagnostics> {
