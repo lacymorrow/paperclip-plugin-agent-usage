@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - The `claude /usage` CLI fallback no longer leaves a `claude` process behind when a probe times out. Everything the probe starts is now sent SIGTERM and then SIGKILL on timeout, exit and worker shutdown, and the probe sends Ctrl-C twice to quit cleanly ([#92]).
+- Usage bars were gray, and the 75–90% bar invisible in dark mode, on Paperclip themes that define `--chart-2`/`--chart-4`/`--chart-5` as grays (in the dark theme `--chart-5` equals `--muted`, the bar track). The bars use the documented green → purple → red colors again, in light and dark themes.
 
 [#92]: https://github.com/lacymorrow/paperclip-plugin-agent-usage/issues/92
 
